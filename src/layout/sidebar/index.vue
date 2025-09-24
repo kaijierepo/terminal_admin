@@ -231,7 +231,6 @@ const toggleSidebar = () => {
     <div class="menu-content" v-show="!isCollapsed">
       <StationTree
         :data="stationTree"
-        :default-expand-all="false"
         @station-select="handleStationSelect"
         @station-connect="handleStationConnect"
         @node-expand="handleNodeExpand"

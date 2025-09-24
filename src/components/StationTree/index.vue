@@ -72,7 +72,6 @@
         </div>
         
         <!-- 车间子节点 -->
-        <transition name="slide-down">
           <div
             v-show="line.expanded"
             class="children-container"
@@ -117,7 +116,6 @@
               </div>
               
               <!-- 站点子节点 -->
-              <transition name="slide-down">
                 <div
                   v-show="workshop.expanded"
                   class="children-container"
@@ -163,10 +161,8 @@
                     </div>
                   </div>
                 </div>
-              </transition>
             </div>
           </div>
-        </transition>
       </div>
     </div>
     
@@ -239,7 +235,7 @@ const props = defineProps({
   // 是否默认展开所有节点
   defaultExpandAll: {
     type: Boolean,
-    default: false
+    default: true
   }
 })
 
@@ -248,7 +244,7 @@ const emit = defineEmits(['station-select', 'station-connect', 'node-expand', 't
 
 // 响应式数据
 const stationTree = ref([])
-const allExpanded = ref(false)
+const allExpanded = ref(true)
 
 // 对话框相关
 const dialogVisible = ref(false)
@@ -285,10 +281,15 @@ const formRules = {
 
 // 初始化树数据
 const initTreeData = (data) => {
-  stationTree.value = data.map(item => ({
-    ...item,
-    expanded: props.defaultExpandAll
-  }))
+  const setExpanded = (nodes, expanded) => {
+    return nodes.map(node => ({
+      ...node,
+      expanded: expanded,
+      children: node.children ? setExpanded(node.children, expanded) : undefined
+    }))
+  }
+  
+  stationTree.value = setExpanded(data, props.defaultExpandAll)
 }
 
 // 监听数据变化
@@ -307,9 +308,17 @@ const toggleNode = (node) => {
 // 切换全部展开/收起
 const toggleExpandAll = () => {
   allExpanded.value = !allExpanded.value
-  stationTree.value.forEach(workshop => {
-    workshop.expanded = allExpanded.value
-  })
+  
+  const setAllExpanded = (nodes, expanded) => {
+    nodes.forEach(node => {
+      node.expanded = expanded
+      if (node.children) {
+        setAllExpanded(node.children, expanded)
+      }
+    })
+  }
+  
+  setAllExpanded(stationTree.value, allExpanded.value)
 }
 
 // 获取站点状态样式类
@@ -546,9 +555,16 @@ const generateId = (type) => {
 
 // 监听全部展开状态
 watch(allExpanded, (newVal) => {
-  stationTree.value.forEach(workshop => {
-    workshop.expanded = newVal
-  })
+  const setAllExpanded = (nodes, expanded) => {
+    nodes.forEach(node => {
+      node.expanded = expanded
+      if (node.children) {
+        setAllExpanded(node.children, expanded)
+      }
+    })
+  }
+  
+  setAllExpanded(stationTree.value, newVal)
 })
 </script>
 
