@@ -229,6 +229,11 @@ const props = defineProps({
   defaultExpandAll: {
     type: Boolean,
     default: true
+  },
+  // 是否默认选择第一个站点
+  defaultSelectFirst: {
+    type: Boolean,
+    default: true
   }
 })
 
@@ -284,6 +289,15 @@ const initTreeData = (data) => {
   }
   
   stationTree.value = setExpanded(data, props.defaultExpandAll)
+  
+  // 自动选择第一个站点
+  if (props.defaultSelectFirst) {
+    const firstStation = findFirstStation(stationTree.value)
+    if (firstStation && !selectedStation.value) {
+      selectedStation.value = firstStation
+      emit('station-select', firstStation)
+    }
+  }
 }
 
 // 监听数据变化
@@ -344,6 +358,35 @@ const clearSelection = () => {
 // 设置选中状态
 const setSelectedStation = (station) => {
   selectedStation.value = station
+}
+
+// 查找第一个站点
+const findFirstStation = (nodes) => {
+  for (const node of nodes) {
+    if (node.children) {
+      for (const child of node.children) {
+        if (child.children) {
+          for (const station of child.children) {
+            if (station.ip) { // 确保是站点节点
+              return station
+            }
+          }
+        }
+      }
+    }
+  }
+  return null
+}
+
+// 选择第一个站点
+const selectFirstStation = () => {
+  const firstStation = findFirstStation(stationTree.value)
+  if (firstStation) {
+    selectedStation.value = firstStation
+    emit('station-select', firstStation)
+    return firstStation
+  }
+  return null
 }
 
 // 处理站点操作
@@ -586,6 +629,7 @@ watch(allExpanded, (newVal) => {
 defineExpose({
   clearSelection,
   setSelectedStation,
+  selectFirstStation,
   selectedStation: readonly(selectedStation)
 })
 </script>
