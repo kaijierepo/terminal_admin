@@ -311,7 +311,6 @@ const toggleSidebar = () => {
 
   .menu-content {
     flex: 1;
-    padding: 8px;
     overflow-y: auto;
 
     &::-webkit-scrollbar {
@@ -337,27 +336,6 @@ const toggleSidebar = () => {
     padding: 8px;
     border-top: 1px solid #e4e7ed;
     background: #f8f9fa;
-  }
-}
-
-// 响应式设计
-@media (max-width: 768px) {
-  .component-sidebar {
-    width: 260px;
-
-    &.collapsed {
-      width: 50px;
-    }
-
-    .collapse-button {
-      right: -12px;
-      width: 24px;
-      height: 24px;
-
-      .el-icon {
-        font-size: 14px;
-      }
-    }
   }
 }
 </style>

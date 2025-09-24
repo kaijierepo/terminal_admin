@@ -50,7 +50,7 @@
               <OfficeBuilding />
             </el-icon>
           </div>
-          <div class="node-info">
+          <div class="node-info flex">
             <div class="node-name">{{ line.name }}</div>
             <div class="node-meta">
               <span class="workshop-count">{{ line.children?.length || 0 }} 个车间</span>
@@ -94,7 +94,7 @@
                     <OfficeBuilding />
                   </el-icon>
                 </div>
-                <div class="node-info">
+                <div class="node-info flex">
                   <div class="node-name">{{ workshop.name }}</div>
                   <div class="node-meta">
                     <span class="station-count">{{ workshop.children?.length || 0 }} 个站点</span>
@@ -645,7 +645,7 @@ watch(allExpanded, (newVal) => {
   .node-content {
     display: flex;
     align-items: center;
-    padding: 6px 16px;
+    padding: 6px 10px;
     transition: all 0.3s ease;
     cursor: pointer;
     
@@ -656,32 +656,28 @@ watch(allExpanded, (newVal) => {
   
   &.line-node {
     .line-content {
-      border-left: 4px solid #409eff;
       margin-left: 0;
       
       &:hover {
         background: #f0f2ff;
-        border-left-color: #337ecc;
       }
     }
   }
   
   &.workshop-node {
-    margin-left: 16px;
+    margin-left: 10px;
     
     .workshop-content {
-      border-left: 3px solid #667eea;
-      margin-left: 16px;
+      margin-left: 4px;
       
       &:hover {
         background: #f0f2ff;
-        border-left-color: #5a6fd8;
       }
     }
   }
   
   &.station-node {
-    margin-left: 32px;
+    margin-left: 20px;
     
     .station-content {
       border-left: 2px solid #e4e7ed;
