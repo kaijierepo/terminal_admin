@@ -128,7 +128,7 @@
         :data="alarmData"
         stripe
         border
-        height="400"
+        height="600"
         v-loading="loading"
         :row-class-name="getRowClassName"
         @selection-change="handleSelectionChange"
@@ -225,7 +225,7 @@
           消音
         </el-button>
         <el-button type="danger" size="small" @click="closePage">
-          关闭(x)
+          关闭
         </el-button>
       </div>
     </div>
@@ -590,7 +590,7 @@ onMounted(() => {
 <style scoped lang="scss">
 .alarm-table-container {
   background: #fff;
-  min-height: 100vh;
+  min-height: 600px;
 }
 
 // 告警行样式 - 红色文字

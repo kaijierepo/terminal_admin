@@ -6,6 +6,7 @@ import AlarmtTable from "@/components/AlarmtTable/index.vue";
 import digTree from "./config";
 import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import { requestUnackAlarmList } from "@/api/alarm";
+import { BellFilled } from "@element-plus/icons-vue";
 
 // 定义组件事件
 const emit = defineEmits([
@@ -20,6 +21,11 @@ const dialogVisible = ref(false);
 const isCollapsed = ref(false);
 const timer = ref(null);
 const alarmData = ref([]);
+
+// 计算是否有未确认的报警
+const hasUnackAlarms = computed(() => {
+  return alarmData.value && alarmData.value.length > 0;
+});
 
 const handleClose = () => {
   dialogVisible.value = false;
@@ -221,7 +227,7 @@ const toggleSidebar = () => {
     <el-dialog
       v-model="dialogVisible"
       title="未确认的报警信息(集中监测)"
-      width="1200px"
+      width="80vw"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
     >
@@ -239,7 +245,14 @@ const toggleSidebar = () => {
       />
 
       <div class="menu-footer">
-        <el-button type="danger" @click="handleAlarm">集中报警</el-button>
+        
+        <el-button type="danger" @click="handleAlarm">
+          <el-icon class="mr-1 alarm-bell-icon" :class="{ 'alarm-animation': hasUnackAlarms }">
+            <BellFilled />
+          </el-icon>
+          集中报警
+          <!-- <span v-if="hasUnackAlarms" class="alarm-badge">{{ alarmData.length }}</span> -->
+        </el-button>
       </div>
     </div>
   </div>
@@ -336,6 +349,85 @@ const toggleSidebar = () => {
     padding: 8px;
     border-top: 1px solid #e4e7ed;
     background: #f8f9fa;
+    
+    .el-button {
+      position: relative;
+      
+      .alarm-bell-icon {
+        position: relative;
+        top: -2px;
+        font-size: 19px;
+        transition: all 0.3s ease;
+        
+        &.alarm-animation {
+          animation: bellShake 1s ease-in-out infinite;
+          transform-origin: center;
+        }
+      }
+      
+      .alarm-badge {
+        position: absolute;
+        top: -8px;
+        right: -8px;
+        background: #ff4757;
+        color: white;
+        border-radius: 50%;
+        width: 18px;
+        height: 18px;
+        font-size: 10px;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+      }
+    }
+  }
+}
+
+// 铃铛摇晃动画
+@keyframes bellShake {
+  0%, 100% {
+    transform: rotate(0deg);
+  }
+  10% {
+    transform: rotate(-15deg);
+  }
+  20% {
+    transform: rotate(15deg);
+  }
+  30% {
+    transform: rotate(-10deg);
+  }
+  40% {
+    transform: rotate(10deg);
+  }
+  50% {
+    transform: rotate(-5deg);
+  }
+  60% {
+    transform: rotate(5deg);
+  }
+  70% {
+    transform: rotate(-2deg);
+  }
+  80% {
+    transform: rotate(2deg);
+  }
+  90% {
+    transform: rotate(-1deg);
+  }
+}
+
+// 徽章脉冲动画
+@keyframes badgePulse {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
+  }
+  50% {
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(255, 71, 87, 0.5);
   }
 }
 </style>
