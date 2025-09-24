@@ -40,9 +40,8 @@
         <!-- 线路节点 -->
         <div
           class="node-content line-content"
-          @click="toggleNode(line)"
         >
-          <div class="node-indicator">
+          <div class="node-indicator" @click="toggleNode(line)">
             <el-icon class="expand-icon" :class="{ expanded: line.expanded }">
               <ArrowRight />
             </el-icon>
@@ -51,10 +50,7 @@
             </el-icon>
           </div>
           <div class="node-info flex">
-            <div class="node-name">{{ line.name }}</div>
-            <div class="node-meta">
-              <span class="workshop-count">{{ line.children?.length || 0 }} 个车间</span>
-            </div>
+            <div class="node-name" @click="toggleNode(line)">{{ line.name }}（{{ line.children?.length || 0 }}）</div>
           </div>
           <div class="node-actions">
             <el-dropdown @command="(command) => handleNodeAction(line, command)" trigger="click" @click.stop>
@@ -84,9 +80,8 @@
               <!-- 车间节点 -->
               <div
                 class="node-content workshop-content"
-                @click="toggleNode(workshop)"
               >
-                <div class="node-indicator">
+                <div class="node-indicator" @click="toggleNode(workshop)">
                   <el-icon class="expand-icon" :class="{ expanded: workshop.expanded }">
                     <ArrowRight />
                   </el-icon>
@@ -94,11 +89,8 @@
                     <OfficeBuilding />
                   </el-icon>
                 </div>
-                <div class="node-info flex">
-                  <div class="node-name">{{ workshop.name }}</div>
-                  <div class="node-meta">
-                    <span class="station-count">{{ workshop.children?.length || 0 }} 个站点</span>
-                  </div>
+                <div class="node-info flex" @click="toggleNode(workshop)">
+                  <div class="node-name">{{ workshop.name }}（{{ workshop.children?.length || 0 }}）</div>
                 </div>
                 <div class="node-actions">
                   <el-dropdown @command="(command) => handleNodeAction(workshop, command, line)" trigger="click" @click.stop>
@@ -124,14 +116,15 @@
                     v-for="station in workshop.children"
                     :key="station.id"
                     class="tree-node station-node"
+                    :class="{ 'selected': isStationSelected(station) }"
                   >
-                    <div class="node-content station-content" @click="handleStationAction(station, 'select')">
+                    <div class="node-content station-content">
                       <div class="node-indicator">
                         <el-icon class="node-icon station-icon" :class="getStationStatusClass(station)">
                           <Monitor />
                         </el-icon>
                       </div>
-                      <div class="node-info station-info">
+                      <div class="node-info station-info" @click="handleStationAction(station, 'select')">
                         <div class="node-name" :class="getStationStatusClass(station)">
                           {{ station.name }}
                         </div>
@@ -211,7 +204,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, readonly } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import {
   OfficeBuilding,
@@ -245,6 +238,7 @@ const emit = defineEmits(['station-select', 'station-connect', 'node-expand', 't
 // 响应式数据
 const stationTree = ref([])
 const allExpanded = ref(true)
+const selectedStation = ref(null) // 当前选中的站点
 
 // 对话框相关
 const dialogVisible = ref(false)
@@ -337,6 +331,21 @@ const getStationStatusText = (station) => {
   return '在线'
 }
 
+// 判断站点是否被选中
+const isStationSelected = (station) => {
+  return selectedStation.value && selectedStation.value.id === station.id
+}
+
+// 清除选中状态
+const clearSelection = () => {
+  selectedStation.value = null
+}
+
+// 设置选中状态
+const setSelectedStation = (station) => {
+  selectedStation.value = station
+}
+
 // 处理站点操作
 const handleStationAction = (station, action) => {
   switch (action) {
@@ -344,7 +353,13 @@ const handleStationAction = (station, action) => {
       emit('station-connect', station)
       ElMessage.success(`正在连接到 ${station.name}`)
       break
+    case 'select':
+      // 设置选中状态
+      selectedStation.value = station
+      emit('station-select', station)
+      break
     default:
+      selectedStation.value = station
       emit('station-select', station)
   }
 }
@@ -566,6 +581,13 @@ watch(allExpanded, (newVal) => {
   
   setAllExpanded(stationTree.value, newVal)
 })
+
+// 暴露方法给父组件
+defineExpose({
+  clearSelection,
+  setSelectedStation,
+  selectedStation: readonly(selectedStation)
+})
 </script>
 
 <style scoped lang="scss">
@@ -647,7 +669,6 @@ watch(allExpanded, (newVal) => {
     align-items: center;
     padding: 6px 10px;
     transition: all 0.3s ease;
-    cursor: pointer;
     
     &:hover {
       background: #f8f9ff;
@@ -688,6 +709,30 @@ watch(allExpanded, (newVal) => {
         border-left-color: #409eff;
       }
     }
+    
+    // 选中状态样式
+    &.selected {
+      .station-content {
+        background: #fafbff;
+        border-left: 1px solid #409eff;
+        
+        .node-name {
+          color: #409eff;
+          font-weight: 600;
+        }
+        
+        .station-icon {
+          color: #409eff !important;
+          transform: scale(1.1);
+        }
+        
+        .station-ip {
+          background: rgba(64, 158, 255, 0.1);
+          color: #409eff;
+          font-weight: 500;
+        }
+      }
+    }
   }
 }
 
@@ -702,9 +747,6 @@ watch(allExpanded, (newVal) => {
     color: #909399;
     transition: transform 0.3s ease;
     
-    &.expanded {
-      transform: rotate(90deg);
-    }
   }
   
   .node-icon {
@@ -746,6 +788,7 @@ watch(allExpanded, (newVal) => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+    cursor: pointer;
     
     &.status-offline {
       color: #f56c6c;

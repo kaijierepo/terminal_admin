@@ -273,13 +273,7 @@ const toggleSidebar = () => {
   transition: all 0.3s ease;
 
   &.collapsed {
-    width: 20px;
-
-    .collapse-button {
-      .el-icon {
-        transform: rotate(180deg);
-      }
-    }
+    width: 10px;
   }
 
   .collapse-button {
