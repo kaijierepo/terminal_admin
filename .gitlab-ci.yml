@@ -1,0 +1,66 @@
+image: node:18
+
+stages:
+  - build
+  - tag
+  - release
+
+# ---------- 1. 构建 ----------
+build:
+  stage: build
+  script:
+    - export TOTAL_COMMITS=$(git rev-list --count HEAD)
+    - npm ci
+    - npm run build
+    - mv JHD_remote_manager_out "JHD_remote_manager_${TOTAL_COMMITS}"
+    - ls -ld JHD_remote_manager_*
+    # 把变量留给下游
+    - echo "TOTAL_COMMITS=${TOTAL_COMMITS}" > build.env
+  artifacts:
+    name: "JHD_remote_manager"
+    paths: ["JHD_remote_manager_*/"]
+    expire_in: 2 weeks
+    reports:
+      dotenv: build.env        # 关键：传给后面 job
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ---------- 2. 自动打 tag ----------
+auto_tag:
+  stage: tag
+  image: node:18              # node 官方镜像已带 git，零安装
+  needs: [build]
+  script:
+    - export TAG_NAME="v$(git rev-list --count HEAD)"
+    - git config user.email "ci-bot@example.com"
+    - git config user.name "CI-Bot"
+    - git tag -a "${TAG_NAME}" -m "Auto release ${TAG_NAME}"
+    - export GIT_PUSH_TOKEN="iJvbTa3Bw2jusndXtW7pxm86MQp1OjNsdXoK.01.100l7cmon"
+    - git push https://oauth2:"${GIT_PUSH_TOKEN}"@jihulab.com/18668216925/jhdremotemanager.git "${TAG_NAME}"
+    - echo "TAG_NAME=${TAG_NAME}" > build.env
+  artifacts:
+    reports:
+      dotenv: build.env
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'
+
+# ---------- 3. 生成 Release ----------
+release:
+  stage: release
+  image: registry.gitlab.com/gitlab-org/release-cli:latest
+  needs: [auto_tag]
+  variables:
+    TAG_NAME: "$TAG_NAME"
+  script:
+    - echo "Creating release ${TAG_NAME}"
+  release:
+    tag_name: "$TAG_NAME"
+    name: "Release $TAG_NAME"
+    description: "Auto-generated for commit ${CI_COMMIT_SHORT_SHA}"
+    assets:
+      links:
+        - name: "JHD_remote_manager_${TAG_NAME}.zip"
+          # 指向 build job 的 artifacts 直链
+          url: "${CI_SERVER_URL}/${CI_PROJECT_PATH}/-/jobs/artifacts/${CI_COMMIT_REF_NAME}/download?job=build"
+  rules:
+    - if: '$CI_COMMIT_BRANCH == "main"'

@@ -1,0 +1,27 @@
+// CSS变量
+:root {
+  --el-fill-color-lighter: #fff !important;
+}
+
+// Sass变量
+$sidebar-width: 200px;
+$sidebar-menu-height: 50px;
+$sidebar-bg-color: transparent;
+$sidebar-light-color: #0f2438;
+$sidebar-text-color: #fff;
+$sidebar-font-size: 14px;
+
+$header-height: 50px;
+$header-bg-color: #fff;
+$header-text-color: #000;
+$header-font-size: 14px;
+
+$page-padding: 12px;
+$page-bg-color: #fff;
+$page-bg-highlight-color: #e8efff;
+
+$primary-color: #4b82fa;
+$primary-lighter-color: #92b4ff;
+$red-color: #f4516c;
+
+$border-color: #e3e3ff;

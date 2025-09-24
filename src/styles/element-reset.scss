@@ -1,0 +1,25 @@
+@use 'variables' as *;
+
+.el-menu {
+  border-right: none !important;
+}
+
+.el-form--inline .el-form-item {
+  margin-right: 10px !important;
+}
+
+.el-upload-dragger {
+  padding: 20px !important;
+}
+
+.el-upload-dragger .el-icon--upload {
+  margin-bottom: 8px !important;
+}
+
+.selected-row {
+  background-color: #acd5ff  !important;
+}
+
+.active-row {
+  background-color: #e8f1fd !important;
+}

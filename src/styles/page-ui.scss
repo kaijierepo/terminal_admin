@@ -1,0 +1,53 @@
+@use 'variables' as *;
+
+.table-header-section {
+  font-size: 20px;
+  font-weight: bold;
+  margin: 40px $page-padding 0;
+  padding-bottom: 20px;
+  border-bottom: 2px solid $border-color;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+
+.flex {
+  display: flex;
+}
+
+.flex-shrink-0 {
+  flex-shrink: 0;
+}
+
+.flex-between {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.flex-align-center {
+  display: flex;
+  align-items: center;
+}
+
+.clickable {
+  cursor: pointer;
+  &:hover {
+    color: $primary-color;
+  }
+}
+
+.w100 {
+  width: 100%;
+}
+
+.el-icon {
+  cursor: pointer;
+}

@@ -1,0 +1,98 @@
+@use 'sass:math';
+@use './variables' as *;
+@use './reset' as *;
+@use './element-reset' as *;
+@use './page-ui' as *;
+
+@for $i from 1 through 30 {
+  .p-#{$i} {
+    padding: #{$i}px;
+  }
+  .pl-#{$i} {
+    padding-left: #{$i}px;
+  }
+  .pr-#{$i} {
+    padding-right: #{$i}px;
+  }
+  .pt-#{$i} {
+    padding-top: #{$i}px;
+  }
+  .pb-#{$i} {
+    padding-bottom: #{$i}px;
+  }
+  .m-#{$i} {
+    margin: #{$i}px;
+  }
+  .ml-#{$i} {
+    margin-left: #{$i}px;
+  }
+  .mr-#{$i} {
+    margin-right: #{$i}px;
+  }
+  .mt-#{$i} {
+    margin-top: #{$i}px;
+  }
+  .mb-#{$i} {
+    margin-bottom: #{$i}px;
+  }
+  .fs-#{$i} {
+    font-size: #{$i}px;
+  }
+}
+
+#nprogress .bar {
+  background: $primary-color !important;
+}
+
+#nprogress .peg {
+  box-shadow: 0 0 10px $primary-color, 0 0 5px $primary-color !important;
+}
+
+.tip {
+  color: #606266;
+  font-size: 12px;
+}
+
+.tip p {
+  margin: 4px 0;
+}
+
+
+.flex {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.flex-1 {
+  flex: 1;
+  width: 100px;
+}
+
+.flex-between {
+  display: flex;
+  justify-content: space-between;
+}
+
+.flex-center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.flex-right {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.clickable {
+  cursor: pointer;
+  color: #3498db;
+  font-size: 12px;
+}
+
+.cursor-pointer {
+  cursor: pointer;
+}
+

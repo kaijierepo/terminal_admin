@@ -1,0 +1,46 @@
+{
+  "name": "damage-analysis",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "serve": "python serve.py",
+    "serve-win": "serve.bat",
+    "build-and-serve": "npm run build && npm run serve-win"
+  },
+  "dependencies": {
+    "@element-plus/icons-vue": "^2.3.1",
+    "@iconify/iconify": "^3.1.1",
+    "@iconify/vue": "^4.1.2",
+    "@vueuse/core": "^10.11.0",
+    "axios": "^1.7.3",
+    "dayjs": "^1.11.12",
+    "echarts": "^5.6.0",
+    "element-plus": "^2.7.8",
+    "lodash-es": "^4.17.21",
+    "nprogress": "^0.2.0",
+    "pinia": "^2.2.0",
+    "pinia-plugin-persistedstate": "^3.2.1",
+    "qs": "^6.13.0",
+    "terser": "^5.31.6",
+    "vue": "^3.4.31",
+    "vue-router": "^4.0.13",
+    "xlsx": "^0.18.5"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.0.5",
+    "@vitejs/plugin-vue-jsx": "^4.0.0",
+    "sass": "^1.77.8",
+    "unocss": "^0.61.9",
+    "unplugin-auto-import": "^0.18.2",
+    "unplugin-icons": "^0.19.1",
+    "unplugin-vue-components": "^0.27.3",
+    "vite": "^5.3.4",
+    "vite-plugin-singlefile": "^2.3.0",
+    "vite-plugin-svg-icons": "2.0.1",
+    "vite-plugin-vue-devtools": "^7.3.7"
+  }
+}

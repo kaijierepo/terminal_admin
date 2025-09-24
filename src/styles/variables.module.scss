@@ -1,0 +1,9 @@
+@use 'variables' as *;
+
+:export {
+  sidebarBgColor: $sidebar-bg-color;
+  sidebarTextColor: $sidebar-text-color;
+  primaryColor: $primary-color;
+  primaryLighterColor: $primary-lighter-color;
+  redColor: $red-color;
+}
