@@ -120,7 +120,7 @@ const getConnectionStatusColor = () => {
       :src="
         currentStation
           ? `http://${currentStation.ip}:${currentStation.httpport}/#/`
-          : 'http://192.168.2.171:81/#/'
+          : ''
       "
       frameborder="0"
       class="main-iframe"

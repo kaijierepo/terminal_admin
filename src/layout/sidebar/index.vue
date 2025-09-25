@@ -5,8 +5,9 @@ import StationTree from "@/components/StationTree/index.vue";
 import AlarmtTable from "@/components/AlarmtTable/index.vue";
 import digTree from "./config";
 import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
-import { requestUnackAlarmList } from "@/api/alarm";
+import { requestUnackAlarmList, requestAckAlarm } from "@/api/alarm";
 import { BellFilled } from "@element-plus/icons-vue";
+import { useAlarmStore } from "@/store/modules/alarm";
 
 // 定义组件事件
 const emit = defineEmits([
@@ -16,26 +17,190 @@ const emit = defineEmits([
   "sidebar-toggle",
 ]);
 
+// 使用报警 store
+const alarmStore = useAlarmStore();
+
 const stationTree = ref([]);
 const dialogVisible = ref(false);
 const isCollapsed = ref(false);
 const timer = ref(null);
 const alarmData = ref([]);
+const alarmtTableRef = ref(null);
 
 // 计算是否有未确认的报警
 const hasUnackAlarms = computed(() => {
-  return alarmData.value && alarmData.value.length > 0;
+  return alarmStore.unackAlarmCount > 0;
+});
+
+// 计算需要播报的报警数量
+const voiceAlarmCount = computed(() => {
+  return alarmStore.voiceAlarms.length;
+});
+
+// 计算消音的报警数量
+const mutedAlarmCount = computed(() => {
+  return alarmStore.mutedAlarms.length;
 });
 
 const handleClose = () => {
+  // 停止所有语音播放
+  if (window.speechAPI) {
+    window.speechAPI.stop();
+  }
+  
+  // 设置语音时间戳
+  alarmStore.setVoiceTimestamp();
+  
+  // 清除所有未确认报警（可选，根据需要决定是否保留）
+  // alarmStore.clearAllUnackAlarms();
+
   dialogVisible.value = false;
 };
 
+// 处理移除已确认的报警
+const handleRemoveConfirmedAlarms = (confirmedItems) => {
+  console.log('移除已确认的报警:', confirmedItems);
+  
+  // 创建已确认报警的唯一标识集合
+  const confirmedIds = new Set(
+    confirmedItems.map(item => `${item.stationName}-${item.tag}-${item.time}`)
+  );
+  
+  // 从本地数据中过滤掉已确认的报警
+  const filteredAlarms = alarmData.value.filter(alarm => {
+    const alarmId = `${alarm.stationName}-${alarm.tag}-${alarm.time}`;
+    return !confirmedIds.has(alarmId);
+  });
+  
+  // 更新本地数据
+  alarmData.value = filteredAlarms;
+  
+  // 更新 store 中的数据
+  alarmStore.updateUnackAlarms(filteredAlarms);
+  
+  console.log(`已从本地移除 ${confirmedItems.length} 条确认的报警，剩余 ${filteredAlarms.length} 条`);
+};
+
+// 切换全局消音
+const toggleGlobalMute = () => {
+  alarmStore.toggleGlobalMute();
+};
+
+// 手动播放报警语音
+const playAlarmVoice = () => {
+  alarmStore.playVoiceAlarms();
+};
+
+// 停止所有语音
+const stopAllVoice = () => {
+  if (window.speechAPI) {
+    window.speechAPI.stop();
+  }
+};
+
+// 清除语音时间戳（重新开始监测）
+const clearVoiceTimestamp = () => {
+  alarmStore.clearVoiceTimestamp();
+};
+
+// 获取语音时间戳信息
+const getVoiceTimestampInfo = () => {
+  const timestamp = alarmStore.voiceTimestamp;
+  if (timestamp) {
+    return {
+      timestamp,
+      dateString: new Date(timestamp).toLocaleString(),
+      timeAgo: Math.floor((Date.now() - timestamp) / 1000 / 60) // 分钟数
+    };
+  }
+  return null;
+};
+
+// 手动开始循环播放
+const startLoopPlayback = () => {
+  alarmStore.startLoopPlayback();
+};
+
+// 手动停止循环播放
+const stopLoopPlayback = () => {
+  alarmStore.stopLoopPlayback();
+};
+
+// 设置播放间隔
+const setPlayInterval = (interval) => {
+  alarmStore.setPlayInterval(interval);
+};
+
+// 获取循环播放状态
+const getLoopPlaybackStatus = () => {
+  return {
+    isPlaying: alarmStore.isLoopPlaying,
+    interval: alarmStore.playInterval,
+    voiceAlarmsCount: alarmStore.voiceAlarms.length
+  };
+};
+
+watch(() => alarmStore.voiceTimestamp, (newVoiceTimestamp, oldVoiceTimestamp) => {
+  console.log('voiceTimestamp 变化:', {
+    new: newVoiceTimestamp,
+    old: oldVoiceTimestamp
+  });
+  if (newVoiceTimestamp !== null && oldVoiceTimestamp !== null && newVoiceTimestamp !== oldVoiceTimestamp) {
+    alarmStore.stopLoopPlayback();
+  }
+});
+
+// 监听 voiceAlarms 变化，自动开始/停止循环播放
+watch(() => alarmStore.voiceAlarms, (newVoiceAlarms, oldVoiceAlarms) => {
+  console.log('voiceAlarms 变化:', {
+    new: newVoiceAlarms.length,
+    old: oldVoiceAlarms?.length || 0
+  });
+  
+  if (newVoiceAlarms.length > 0) {
+    // 有需要播放的报警，开始循环播放
+    if (!alarmStore.isLoopPlaying) {
+      alarmStore.startLoopPlayback();
+    }
+  } else {
+    // 没有需要播放的报警，停止循环播放
+    if (alarmStore.isLoopPlaying) {
+      alarmStore.stopLoopPlayback();
+    }
+  }
+}, { immediate: true });
+
+// 监听全局消音状态变化
+watch(() => alarmStore.globalMute, (isMuted) => {
+  if (isMuted) {
+    // 全局消音时停止循环播放
+    alarmStore.stopLoopPlayback();
+  } else if (alarmStore.voiceAlarms.length > 0) {
+    // 取消全局消音且有报警时，重新开始循环播放
+    alarmStore.startLoopPlayback();
+  }
+});
+
 onUnmounted(() => {
-  clearInterval(timer.value);
+  // 清理定时器
+  if (timer.value) {
+    clearInterval(timer.value);
+    timer.value = null;
+  }
+  
+  // 组件卸载时停止循环播放
+  alarmStore.stopLoopPlayback();
+  
+  // 清理报警数据，释放内存
+  alarmData.value = [];
+  
+  console.log('侧边栏组件已卸载，内存已清理');
 });
 
 onMounted(() => {
+  // 从 localStorage 加载语音时间戳
+  alarmStore.loadVoiceTimestamp();
+  
   // 优先从localStorage加载数据
   const savedTreeData = localStorage.getItem("stationTreeData");
   if (savedTreeData) {
@@ -62,6 +227,12 @@ onMounted(() => {
   //   console.log(err);
   //  });
   loopQueryUnackAlarmList();
+  
+  // 确保清理之前的定时器
+  if (timer.value) {
+    clearInterval(timer.value);
+  }
+  
   timer.value = setInterval(() => {
     loopQueryUnackAlarmList();
   }, 60 * 1000);
@@ -75,7 +246,7 @@ const loopQueryUnackAlarmList = async () => {
     // 创建所有请求的Promise数组
     const requests = getAllStationIps.value.map(({ ip, name }) => 
       requestUnackAlarmList(ip, { name: name }).catch(err => {
-        console.log(`请求 ${name} 失败:`, err);
+        console.log(`请求 ${ip}  ${name} 失败:`, err);
         return { params: [] }; // 失败时返回空数组
       })
     );
@@ -91,12 +262,42 @@ const loopQueryUnackAlarmList = async () => {
     });
     
     console.log(`获取到 ${unackAlarmList.length} 条告警数据`, unackAlarmList);
-    alarmData.value = unackAlarmList;
-    console.log('alarmData.value 已更新:', alarmData.value);
+    
+    // 使用 Pinia store 处理报警数据
+    alarmStore.updateUnackAlarms(unackAlarmList);
+    
+    // 更新本地数据（用于显示）
+    alarmData.value = alarmStore.unackAlarms;
+    
+    // 播放需要播报的报警语音
+    alarmStore.playVoiceAlarms();
+    
+    console.log('报警数据已更新到 store');
+    console.log('未确认报警数量:', alarmStore.unackAlarmCount);
+    console.log('需要播报的报警数量:', alarmStore.voiceAlarms.length);
+
+    // 内存优化：限制报警数据数量，避免无限累积
+    const MAX_ALARM_COUNT = 100000; // 可以调整这个数值
+    if (alarmData.value.length > MAX_ALARM_COUNT) {
+      console.warn(`报警数据过多(${alarmData.value.length}条)，清理旧数据，保留最新${MAX_ALARM_COUNT}条`);
+      // 保留最新的数据
+      const sortedData = alarmData.value
+        .sort((a, b) => new Date(b.time || b.timestamp || 0) - new Date(a.time || a.timestamp || 0))
+        .slice(0, MAX_ALARM_COUNT);
+      alarmData.value = sortedData;
+      alarmStore.updateUnackAlarms(sortedData);
+    }
+
+    // console.log('unackObj:', unackObj);
+
+    // console.log('alarmData.value 已更新:', alarmData.value);
   } catch (error) {
     console.error('批量请求失败:', error);
+  } finally {
+    if (alarmtTableRef.value) {
+      alarmtTableRef.value.loading = false;
+    }
   }
-
 };
 
 // 收集所有站点的IP地址
@@ -228,10 +429,19 @@ const toggleSidebar = () => {
       v-model="dialogVisible"
       title="未确认的报警信息(集中监测)"
       width="80vw"
+      :before-close="handleClose"
       :close-on-click-modal="false"
       :close-on-press-escape="false"
     >
-      <AlarmtTable :stationTree="stationTree" :alarmData="alarmData" />
+      <AlarmtTable 
+        ref="alarmtTableRef" 
+        @refresh-data="loopQueryUnackAlarmList" 
+        @close-page="handleClose" 
+        @remove-confirmed-alarms="handleRemoveConfirmedAlarms"
+        :requestAckAlarm="requestAckAlarm" 
+        :stationTree="stationTree" 
+        :alarmData="alarmData" 
+      />
     </el-dialog>
 
     <div class="menu-content" v-show="!isCollapsed">
