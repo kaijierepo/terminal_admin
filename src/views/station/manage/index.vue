@@ -141,22 +141,25 @@
           <el-icon><Search /></el-icon>扫描站点
         </el-button>
         <span>共{{ stationList.length || 0 }}个站点</span>
+        <span v-if="selectedStations.length > 0" class="selected-count">
+          （已选择{{ selectedStations.length }}个）
+        </span>
       </div>
       <div class="header-search">
         <el-button
           plain
-          @click="getAllSystemInfo"
-          :disabled="stationList.length === 0"
+          @click="getSelectedSystemInfo"
+          :disabled="selectedStations.length === 0"
         >
           <el-icon><Loading /></el-icon>刷新系统信息
         </el-button>
         <el-button
           type="danger"
           plain
-          @click="deleteAllStations"
-          :disabled="stationList.length === 0"
+          @click="deleteSelectedStations"
+          :disabled="selectedStations.length === 0"
         >
-          <el-icon><Delete /></el-icon>全部删除
+          <el-icon><Delete /></el-icon>
         </el-button>
       </div>
     </div>
@@ -166,8 +169,10 @@
       border
       stripe
       v-loading="loading"
+      @selection-change="handleSelectionChange"
       style="width: 100%"
     >
+      <el-table-column type="selection" width="55"></el-table-column>
       <el-table-column type="index" label="序号" width="60"></el-table-column>
       <el-table-column prop="stationName" label="站点名" min-width="100">
         <template #default="{ row }">
@@ -363,12 +368,18 @@ const loading = ref(false);
 const dialogVisible = ref(false);
 const dialogTitle = ref("新增站点");
 const formRef = ref();
+const selectedStations = ref([]); // 选中的站点列表
 
 // 扫描相关数据
 const scanDialogVisible = ref(false);
 
 // 使用 store 中的站点列表
 const stationList = computed(() => stationStore.getAllStations);
+
+// 处理表格选择变化
+const handleSelectionChange = (selection) => {
+  selectedStations.value = selection;
+};
 
 // 表单数据
 const stationForm = reactive({
@@ -486,22 +497,36 @@ const deleteStation = (row, index) => {
     });
 };
 
-// 全部删除站点
-const deleteAllStations = () => {
-  if (stationList.value.length === 0) {
-    ElMessage.warning("没有站点数据可删除");
+// 删除选中的站点
+const deleteSelectedStations = () => {
+  if (selectedStations.value.length === 0) {
+    ElMessage.warning("请先选择要删除的站点");
     return;
   }
 
-  ElMessageBox.confirm(`确定要删除所有站点吗？此操作不可恢复！`, "警告", {
-    confirmButtonText: "确定删除",
-    cancelButtonText: "取消",
-    type: "warning",
-    confirmButtonClass: "el-button--danger",
-  })
+  const stationNames = selectedStations.value.map(station => station.stationName).join('、');
+  const selectedCount = selectedStations.value.length;
+  
+  ElMessageBox.confirm(
+    `确定要删除选中的 ${selectedCount} 个站点吗？\n站点：${stationNames}\n此操作不可恢复！`, 
+    "警告", 
+    {
+      confirmButtonText: "确定删除",
+      cancelButtonText: "取消",
+      type: "warning",
+      confirmButtonClass: "el-button--danger",
+    }
+  )
     .then(() => {
-      stationStore.clearAllStations();
-      ElMessage.success("已删除所有站点");
+      // 从store中删除选中的站点
+      selectedStations.value.forEach(station => {
+        stationStore.removeStation(station.ip);
+      });
+      
+      // 清空选中状态
+      selectedStations.value = [];
+      
+      ElMessage.success(`已删除 ${selectedCount} 个选中站点`);
     })
     .catch(() => {
       // 取消删除
@@ -594,27 +619,17 @@ const getSystemInfo = async (station) => {
   }
 };
 
-// 批量获取所有站点的系统信息
-const getAllSystemInfo = async () => {
-  if (stationList.value.length === 0) {
-    ElMessage.warning("没有站点数据");
-    return;
-  }
-
-  // 为所有没有系统信息的站点添加loading状态
-  const stationsToUpdate = stationList.value.filter(
-    (station) => !station.systemInfo
-  );
-
-  if (stationsToUpdate.length === 0) {
-    ElMessage.info("所有站点都已获取过系统信息");
+// 获取选中站点的系统信息
+const getSelectedSystemInfo = async () => {
+  if (selectedStations.value.length === 0) {
+    ElMessage.warning("请先选择要刷新系统信息的站点");
     return;
   }
 
   try {
-    // 逐个请求系统信息
-    for (let i = 0; i < stationsToUpdate.length; i++) {
-      const station = stationsToUpdate[i];
+    // 逐个请求选中站点的系统信息
+    for (let i = 0; i < selectedStations.value.length; i++) {
+      const station = selectedStations.value[i];
 
       // 设置单个站点的loading状态
       station.loading = true;
@@ -641,16 +656,16 @@ const getAllSystemInfo = async () => {
       }
 
       // 添加延迟，避免请求过于频繁
-      if (i < stationsToUpdate.length - 1) {
+      if (i < selectedStations.value.length - 1) {
         await new Promise((resolve) => setTimeout(resolve, 500));
       }
     }
 
-    // 批量获取完成
-    ElMessage.success(`批量获取完成，共处理 ${stationsToUpdate.length} 个站点`);
+    // 获取完成
+    ElMessage.success(`刷新完成，共处理 ${selectedStations.value.length} 个选中站点`);
   } catch (error) {
-    console.error("批量获取系统信息失败:", error);
-    ElMessage.error("批量获取系统信息失败");
+    console.error("获取选中站点系统信息失败:", error);
+    ElMessage.error("获取选中站点系统信息失败");
   }
 };
 
@@ -1147,6 +1162,12 @@ const handleScanComplete = (result) => {
 
 .file-actions {
   margin-left: 12px;
+}
+
+.selected-count {
+  color: #409eff;
+  font-weight: 600;
+  margin-left: 8px;
 }
 
 </style>
