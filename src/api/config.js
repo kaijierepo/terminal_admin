@@ -67,26 +67,42 @@ export const getStationList = () => {
   });
 }
 
-export const requestGetSystemInfo = () => {
-  return request({
+export const requestGetSystemInfo = (ip) => {
+  const customRequest = createService(ip, '81', false, 1000);
+  return customRequest({
     url: `/rpc`,
     method: "post",
     data: {
-      jsonrpc: '2.0',
-      method: 'getSystemInfo',
-      id: 1,
-     },
+      "jsonrpc": "2.0",
+      "method": "getSystemInfo",
+      "params": {},
+    },
   });
 }
 
-export const requestUpgradeVersion = (ip) => {
-  return request({
+
+export const requestUpgradeVersion = (ip, data) => {
+  const customRequest = createService(ip, '81', false, 60000);
+  return customRequest({
+    url: `/rpc`,
+    method: "post",
+    data: {
+      "jsonrpc": "2.0",
+      "method": "UpgradeVersion",
+      "params": data,
+    },
+  });
+}
+
+
+export const requestUpTopoVer = (ip) => {
+  const customRequest = createService(ip);
+  return customRequest({
     url: `/rpc`,
     method: "post",
     data: {
       jsonrpc: '2.0',
-      method: 'upgradeVersion',
-      id: 1,
+      method: 'upgradeTopoVer1',
      },
   });
 }

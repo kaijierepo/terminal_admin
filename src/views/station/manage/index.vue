@@ -154,6 +154,13 @@
           <el-icon><Loading /></el-icon>刷新系统信息
         </el-button>
         <el-button
+          plain
+          @click="UpSelectedTopoVer"
+          :disabled="selectedStations.length === 0"
+        >
+          升级站场图
+        </el-button>
+        <el-button
           type="danger"
           plain
           @click="deleteSelectedStations"
@@ -352,7 +359,7 @@ import {
   Search,
 } from "@element-plus/icons-vue";
 import * as XLSX from "xlsx";
-import { requestGetSystemInfo, requestUpgradeVersion } from "@/api/config";
+import { requestGetSystemInfo, requestUpgradeVersion, requestUpTopoVer } from "@/api/config";
 import { requestUploadFile } from "@/api/file";
 import { formatIPForURL } from "@/utils/ipValidator";
 import { useStationStore } from "@/store/modules/station";
@@ -669,6 +676,25 @@ const getSelectedSystemInfo = async () => {
   }
 };
 
+const UpSelectedTopoVer = async () => {
+  if (selectedStations.value.length === 0) {
+    ElMessage.warning("请先选择要升级站场图的站点");
+    return;
+  }
+  
+  try {
+    const response = await requestUpTopoVer(selectedStations.value.ip);
+    if (response) {
+      ElMessage.success("升级站场图成功");
+    } else {
+      ElMessage.warning("升级站场图失败");
+    }
+  } catch (error) {
+    console.error("升级站场图失败:", error);
+    ElMessage.error("升级站场图失败");
+  }
+};
+
 const uploadFiles = ref([]);
 const modelFiles = ref([]);
 
@@ -904,6 +930,7 @@ const upgradeStation = async (station) => {
       dir_type: "run",
       path: fileName,
     }));
+    
 
     const upgradeResponse = await requestUpgradeVersion(
       station.ip,
