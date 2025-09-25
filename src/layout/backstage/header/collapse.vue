@@ -1,5 +1,5 @@
 <script setup>
-import { useAppStore } from '../../store/modules/app';
+import { useAppStore } from '@/store/modules/app';
 import { storeToRefs } from 'pinia';
 import { Expand, Fold } from '@element-plus/icons-vue';
 

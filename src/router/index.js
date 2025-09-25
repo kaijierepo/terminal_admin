@@ -1,6 +1,7 @@
 import { createRouter, createWebHashHistory } from 'vue-router';
 
 import Layout from '@/layout/index.vue';
+import BackstageLayout from '@/layout/backstage/index.vue';
 
 export const constantRouterMap = [
   {
@@ -12,8 +13,16 @@ export const constantRouterMap = [
     component: Layout,
   },
   {
+    path: '/backstage',
+    name: 'BackstageRoot',
+    redirect: '/station',
+    meta: {
+      menuHidden: true
+    }
+  },
+  {
     path: '/station',
-    component: Layout,
+    component: BackstageLayout,
     name: 'station',
     redirect: 'station/manage',
     meta: {
@@ -34,7 +43,7 @@ export const constantRouterMap = [
   },
   {
     path: '/param',
-    component: Layout,
+    component: BackstageLayout,
     name: 'param',
     redirect: 'param/project',
     meta: {
@@ -62,7 +71,7 @@ export const constantRouterMap = [
   }, 
   {
     path: '/electricParams',
-    component: Layout,
+    component: BackstageLayout,
     name: 'electricParams',
     redirect: 'electricParams/report',
     meta: {
@@ -84,7 +93,7 @@ export const constantRouterMap = [
   
   {
     path: '/dragForce',
-    component: Layout,
+    component: BackstageLayout,
     name: 'dragForce',
     redirect: 'dragForce/report',
     meta: {
@@ -106,7 +115,7 @@ export const constantRouterMap = [
   
   {
     path: '/pull',
-    component: Layout,
+    component: BackstageLayout,
     name: 'pull',
     redirect: 'pull/audioDownload',
     meta: {
@@ -127,7 +136,7 @@ export const constantRouterMap = [
   },
   // {
   //   path: '/example',
-  //   component: Layout,
+  //   component: BackstageLayout,
   //   name: 'example',
   //   redirect: 'example/chart',
   //   meta: {

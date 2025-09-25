@@ -1,8 +1,6 @@
 <script setup>
 import { ref } from "vue";
-import AppMain from "./appMain.vue";
 import SideBar from "./sidebar/index.vue";
-import Header from "./header/index.vue";
 
 // 响应式数据
 const currentStation = ref(null);
