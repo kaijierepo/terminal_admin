@@ -37,12 +37,12 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: dist-files
-        path: dist/
+        path: JHD_remote_manager_out/
         retention-days: 7
         
     - name: Create deployment package
       run: |
-        cd dist
+        cd JHD_remote_manager_out
         tar -czf ../deployment.tar.gz .
         
     - name: Upload deployment package
