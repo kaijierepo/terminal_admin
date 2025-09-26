@@ -1,5 +1,5 @@
 <script setup lang="tsx">
-import { ref, onMounted, computed } from "vue";
+import { ref, onMounted, computed, watch } from "vue";
 import { getStationList } from "@/api/config";
 import StationTree from "@/components/StationTree/index.vue";
 import AlarmtTable from "@/components/AlarmtTable/index.vue";
@@ -8,6 +8,8 @@ import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
 import { requestUnackAlarmList, requestAckAlarm } from "@/api/alarm";
 import { BellFilled } from "@element-plus/icons-vue";
 import { useAlarmStore } from "@/store/modules/alarm";
+import { useWebSocketManager } from "@/mixins/websocketManager";
+import { useWebSocketDebug } from "@/mixins/websocketDebug";
 
 // 定义组件事件
 const emit = defineEmits([
@@ -19,6 +21,31 @@ const emit = defineEmits([
 
 // 使用报警 store
 const alarmStore = useAlarmStore();
+
+// 初始化 WebSocket 调试工具
+const { testConnection, diagnoseConnection, checkNetworkConnection } = useWebSocketDebug();
+
+// 初始化 WebSocket 管理器
+const {
+  socketInstances,
+  connectionStates,
+  createStationConnections,
+  updateStationConnections,
+  sendMessage,
+  closeConnection,
+  closeAllConnections,
+  reconnectConnection,
+  reconnectAllConnections,
+  reconnectStations,
+  getConnectionState,
+  getAllConnectionStates,
+  getConnectionHealth,
+  getAllConnectionHealth,
+  hasConnection,
+  getConnectionCount,
+  sendSubscriptionToConnection,
+  sendSubscriptionToAllConnections
+} = useWebSocketManager();
 
 const stationTree = ref([]);
 const dialogVisible = ref(false);
@@ -47,10 +74,10 @@ const handleClose = () => {
   if (window.speechAPI) {
     window.speechAPI.stop();
   }
-  
+
   // 设置语音时间戳
   alarmStore.setVoiceTimestamp();
-  
+
   // 清除所有未确认报警（可选，根据需要决定是否保留）
   // alarmStore.clearAllUnackAlarms();
 
@@ -59,26 +86,145 @@ const handleClose = () => {
 
 // 处理移除已确认的报警
 const handleRemoveConfirmedAlarms = (confirmedItems) => {
-  console.log('移除已确认的报警:', confirmedItems);
-  
+  console.log("移除已确认的报警:", confirmedItems);
+
   // 创建已确认报警的唯一标识集合
   const confirmedIds = new Set(
-    confirmedItems.map(item => `${item.stationName}-${item.tag}-${item.time}`)
+    confirmedItems.map((item) => `${item.stationName}-${item.tag}-${item.time}`)
   );
-  
+
   // 从本地数据中过滤掉已确认的报警
-  const filteredAlarms = alarmData.value.filter(alarm => {
+  const filteredAlarms = alarmData.value.filter((alarm) => {
     const alarmId = `${alarm.stationName}-${alarm.tag}-${alarm.time}`;
     return !confirmedIds.has(alarmId);
   });
-  
+
   // 更新本地数据
   alarmData.value = filteredAlarms;
-  
+
   // 更新 store 中的数据
   alarmStore.updateUnackAlarms(filteredAlarms);
+
+  console.log(
+    `已从本地移除 ${confirmedItems.length} 条确认的报警，剩余 ${filteredAlarms.length} 条`
+  );
+};
+
+// WebSocket 事件处理函数
+const handleWebSocketMessage = (connectionId, eventName, ...args) => {
+  console.log(`收到 WebSocket 消息: ${connectionId} -> ${eventName}`, args);
   
-  console.log(`已从本地移除 ${confirmedItems.length} 条确认的报警，剩余 ${filteredAlarms.length} 条`);
+  // console.log('args[0]:##################', args[0]);
+  handleAlarmMessage(connectionId, args[0]);
+
+};
+
+const handleWebSocketError = (connectionId, error) => {
+  console.error(`WebSocket 错误: ${connectionId}`, error);
+  // 可以在这里添加错误处理逻辑，比如重连、通知用户等
+};
+
+const handleWebSocketConnect = (connectionId, socket) => {
+  console.log(`WebSocket 连接成功: ${connectionId}`);
+  // 连接成功后可以发送认证消息等
+  sendMessage(connectionId, 'auth', { type: 'client', timestamp: Date.now() });
+};
+
+const handleWebSocketDisconnect = (connectionId, reason) => {
+  console.log(`WebSocket 连接断开: ${connectionId}, 原因: ${reason}`);
+  // 可以在这里添加断开连接的处理逻辑
+};
+
+// 处理报警消息
+const handleAlarmMessage = (connectionId, alarmData) => {
+  console.log(`收到报警消息: ${connectionId}`, alarmData);
+  const [stationName, ip, port] = connectionId.split('-');
+  // 检查数据格式，支持两种结构
+  let params;
+  if (alarmData && alarmData.params) {
+    // 格式1: { params: { isAck, uuid, ... } }
+    params = {...alarmData.params, stationName, ip, port};
+  } else if (alarmData && (alarmData.isAck !== undefined || alarmData.uuid)) {
+    // 格式2: { isAck, uuid, ... } 直接传递
+    params = {...alarmData, stationName, ip, port};
+  } else {
+    console.warn('报警数据格式不正确:', alarmData);
+    return;
+  }
+  
+  const { isAck, uuid } = params;
+  
+  if (!uuid) {
+    console.warn('报警数据缺少 uuid 字段');
+    return;
+  }
+  
+  if (isAck) {
+    // 确认报警：删除相同 uuid 的对象
+    handleAlarmAck(uuid);
+  } else {
+    // 新增或更新报警
+    handleAlarmUpdate(params);
+  }
+};
+
+// 处理报警确认
+const handleAlarmAck = (uuid) => {
+  console.log(`确认报警，删除 uuid: ${uuid}`);
+  const beforeCount = alarmData.value.length;
+  const filteredAlarms = alarmData.value.filter(alarm => alarm.uuid !== uuid);
+  const afterCount = filteredAlarms.length;
+  
+  if (beforeCount > afterCount) {
+    alarmData.value = filteredAlarms;
+    alarmStore.updateUnackAlarms(filteredAlarms);
+    console.log(`✅ 已删除 uuid ${uuid}，从 ${beforeCount} 条减少到 ${afterCount} 条报警`);
+  } else {
+    console.log(`⚠️ 未找到 uuid ${uuid} 的报警记录`);
+  }
+};
+
+// 处理报警更新
+const handleAlarmUpdate = (alarmParams) => {
+  const { uuid } = alarmParams;
+  console.log(`处理报警数据，uuid: ${uuid}`);
+  
+  // 检查是否已存在相同 uuid 的报警
+  const existingIndex = alarmData.value.findIndex(alarm => alarm.uuid === uuid);
+  
+  if (existingIndex !== -1) {
+    // 更新已存在的报警
+    console.log(`🔄 更新已存在的报警，uuid: ${uuid}`);
+    const oldAlarm = alarmData.value[existingIndex];
+    alarmData.value[existingIndex] = { ...oldAlarm, ...alarmParams };
+    console.log('更新前:', oldAlarm);
+    console.log('更新后:', alarmData.value[existingIndex]);
+  } else {
+    // 新增报警
+    console.log(`➕ 新增报警，uuid: ${uuid}`);
+    alarmData.value.push(alarmParams);
+    console.log('新增报警数据:', alarmParams);
+  }
+  
+  // 更新 store 中的数据
+  alarmStore.updateUnackAlarms(alarmData.value);
+  
+  // 播放语音报警
+  alarmStore.playVoiceAlarms();
+  
+  console.log(`📊 当前报警总数: ${alarmData.value.length}`);
+};
+
+// 处理状态消息
+const handleStatusMessage = (connectionId, statusData) => {
+  console.log(`收到状态消息: ${connectionId}`, statusData);
+  // 处理设备状态更新
+};
+
+// 处理心跳消息
+const handleHeartbeatMessage = (connectionId, heartbeatData) => {
+  console.log(`收到心跳消息: ${connectionId}`, heartbeatData);
+  // 更新连接状态
 };
 
 // 切换全局消音
@@ -110,7 +256,7 @@ const getVoiceTimestampInfo = () => {
     return {
       timestamp,
       dateString: new Date(timestamp).toLocaleString(),
-      timeAgo: Math.floor((Date.now() - timestamp) / 1000 / 60) // 分钟数
+      timeAgo: Math.floor((Date.now() - timestamp) / 1000 / 60), // 分钟数
     };
   }
   return null;
@@ -136,50 +282,66 @@ const getLoopPlaybackStatus = () => {
   return {
     isPlaying: alarmStore.isLoopPlaying,
     interval: alarmStore.playInterval,
-    voiceAlarmsCount: alarmStore.voiceAlarms.length
+    voiceAlarmsCount: alarmStore.voiceAlarms.length,
   };
 };
 
-watch(() => alarmStore.voiceTimestamp, (newVoiceTimestamp, oldVoiceTimestamp) => {
-  console.log('voiceTimestamp 变化:', {
-    new: newVoiceTimestamp,
-    old: oldVoiceTimestamp
-  });
-  if (newVoiceTimestamp !== null && oldVoiceTimestamp !== null && newVoiceTimestamp !== oldVoiceTimestamp) {
-    alarmStore.stopLoopPlayback();
-  }
-});
-
-// 监听 voiceAlarms 变化，自动开始/停止循环播放
-watch(() => alarmStore.voiceAlarms, (newVoiceAlarms, oldVoiceAlarms) => {
-  console.log('voiceAlarms 变化:', {
-    new: newVoiceAlarms.length,
-    old: oldVoiceAlarms?.length || 0
-  });
-  
-  if (newVoiceAlarms.length > 0) {
-    // 有需要播放的报警，开始循环播放
-    if (!alarmStore.isLoopPlaying) {
-      alarmStore.startLoopPlayback();
-    }
-  } else {
-    // 没有需要播放的报警，停止循环播放
-    if (alarmStore.isLoopPlaying) {
+watch(
+  () => alarmStore.voiceTimestamp,
+  (newVoiceTimestamp, oldVoiceTimestamp) => {
+    console.log("voiceTimestamp 变化:", {
+      new: newVoiceTimestamp,
+      old: oldVoiceTimestamp,
+    });
+    if (
+      newVoiceTimestamp !== null &&
+      oldVoiceTimestamp !== null &&
+      newVoiceTimestamp !== oldVoiceTimestamp
+    ) {
       alarmStore.stopLoopPlayback();
     }
   }
-}, { immediate: true });
+);
+
+// 监听 voiceAlarms 变化，自动开始/停止循环播放
+watch(
+  () => alarmStore.voiceAlarms,
+  (newVoiceAlarms, oldVoiceAlarms) => {
+    console.log("voiceAlarms 变化:", {
+      new: newVoiceAlarms.length,
+      old: oldVoiceAlarms?.length || 0,
+    });
+
+    if (newVoiceAlarms.length > 0) {
+      // 有需要播放的报警，开始循环播放
+      if (!alarmStore.isLoopPlaying) {
+        alarmStore.startLoopPlayback();
+      }
+    } else {
+      // 没有需要播放的报警，停止循环播放
+      if (alarmStore.isLoopPlaying) {
+        alarmStore.stopLoopPlayback();
+      }
+    }
+  },
+  { immediate: true }
+);
 
 // 监听全局消音状态变化
-watch(() => alarmStore.globalMute, (isMuted) => {
-  if (isMuted) {
-    // 全局消音时停止循环播放
-    alarmStore.stopLoopPlayback();
-  } else if (alarmStore.voiceAlarms.length > 0) {
-    // 取消全局消音且有报警时，重新开始循环播放
-    alarmStore.startLoopPlayback();
+watch(
+  () => alarmStore.globalMute,
+  (isMuted) => {
+    if (isMuted) {
+      // 全局消音时停止循环播放
+      alarmStore.stopLoopPlayback();
+    } else if (alarmStore.voiceAlarms.length > 0) {
+      // 取消全局消音且有报警时，重新开始循环播放
+      alarmStore.startLoopPlayback();
+    }
   }
-});
+);
+
+
 
 onUnmounted(() => {
   // 清理定时器
@@ -187,20 +349,28 @@ onUnmounted(() => {
     clearInterval(timer.value);
     timer.value = null;
   }
-  
+
+  // 清理健康监控定时器
+  if (healthTimer) {
+    clearInterval(healthTimer);
+  }
+
   // 组件卸载时停止循环播放
   alarmStore.stopLoopPlayback();
-  
+
   // 清理报警数据，释放内存
   alarmData.value = [];
-  
-  console.log('侧边栏组件已卸载，内存已清理');
+
+  // 关闭所有 WebSocket 连接
+  closeAllConnections();
+
+  console.log("侧边栏组件已卸载，内存和 WebSocket 连接已清理");
 });
 
 onMounted(() => {
   // 从 localStorage 加载语音时间戳
   alarmStore.loadVoiceTimestamp();
-  
+
   // 优先从localStorage加载数据
   const savedTreeData = localStorage.getItem("stationTreeData");
   if (savedTreeData) {
@@ -227,62 +397,175 @@ onMounted(() => {
   //   console.log(err);
   //  });
   loopQueryUnackAlarmList();
-  
+
   // 确保清理之前的定时器
   if (timer.value) {
     clearInterval(timer.value);
   }
-  
+
   timer.value = setInterval(() => {
     loopQueryUnackAlarmList();
-  }, 60 * 1000);
-  
+  }, 20 * 60 * 1000);
+
+  // 添加连接健康状态监控定时器
+  const healthTimer = setInterval(() => {
+    monitorConnectionHealth();
+  }, 30 * 1000); // 每30秒检查一次
+
+  // 初始化 WebSocket 连接
+  initializeWebSocketConnections();
 });
+
+// 初始化 WebSocket 连接
+const initializeWebSocketConnections = () => {
+  console.log('初始化 WebSocket 连接...',  wsStations.value);
+  
+  // 获取所有站点信息
+  const stations = wsStations.value;
+  
+  if (stations.length > 0) {
+    // 创建站点 WebSocket 连接
+    createStationConnections(
+      stations,
+      handleWebSocketMessage,
+      handleWebSocketError,
+      handleWebSocketConnect,
+      handleWebSocketDisconnect
+    );
+    
+    console.log(`已创建 ${stations.length} 个 WebSocket 连接`);
+  }
+};
+
+// 添加连接健康状态监控
+const monitorConnectionHealth = () => {
+  const health = getAllConnectionHealth();
+  console.log('WebSocket 连接健康状态:', health);
+  
+  // 检查是否有连接异常
+  const unhealthyConnections = Object.entries(health).filter(([id, status]) => 
+    status.status === 'disconnected' && status.reconnectCount > 3
+  );
+  
+  if (unhealthyConnections.length > 0) {
+    console.warn('发现异常连接，尝试重连:', unhealthyConnections);
+    const stationIds = unhealthyConnections.map(([id]) => id);
+    reconnectStations(stationIds);
+  }
+};
+
+// 手动发送订阅命令到所有连接
+const sendSubscriptionToAll = () => {
+  console.log('手动发送订阅命令到所有连接');
+  const successCount = sendSubscriptionToAllConnections();
+  console.log(`成功向 ${successCount} 个连接发送订阅命令`);
+  return successCount;
+};
+
+// 手动发送订阅命令到指定连接
+const sendSubscriptionToStation = (stationId) => {
+  console.log(`手动发送订阅命令到站点: ${stationId}`);
+  return sendSubscriptionToConnection(stationId);
+};
+
+// WebSocket 调试方法
+const debugWebSocketConnection = async (station) => {
+  const url = `ws://${station.ip}:${station.port}`;
+  console.log(`🔍 调试 WebSocket 连接: ${station.name} -> ${url}`);
+  
+  try {
+    // 检查网络连接
+    checkNetworkConnection();
+    
+    // 诊断连接问题
+    const result = await diagnoseConnection(url);
+    console.log(`诊断结果 (${station.name}):`, result);
+    
+    return result;
+  } catch (error) {
+    console.error(`调试失败 (${station.name}):`, error);
+    return { success: false, error: error.message };
+  }
+};
+
+// 批量调试所有站点连接
+const debugAllConnections = async () => {
+  console.log('🔍 开始调试所有 WebSocket 连接...');
+  const stations = wsStations.value;
+  const results = [];
+  
+  for (const station of stations) {
+    console.log(`\n--- 调试站点: ${station.name} ---`);
+    const result = await debugWebSocketConnection(station);
+    results.push({
+      station: station.name,
+      url: `ws://${station.ip}:${station.port}`,
+      ...result
+    });
+  }
+  
+  console.log('\n📊 调试结果汇总:');
+  results.forEach(result => {
+    if (result.success) {
+      console.log(`✅ ${result.station}: 连接正常`);
+    } else {
+      console.log(`❌ ${result.station}: 连接失败 - ${result.error}`);
+    }
+  });
+  
+  return results;
+};
 
 const loopQueryUnackAlarmList = async () => {
   const unackAlarmList = [];
-  
+
   try {
     // 创建所有请求的Promise数组
-    const requests = getAllStationIps.value.map(({ ip, name }) => 
-      requestUnackAlarmList(ip, { name: name }).catch(err => {
+    const requests = getAllStationIps.value.map(({ ip, name }) =>
+      requestUnackAlarmList(ip, { name: name }).catch((err) => {
         console.log(`请求 ${ip}  ${name} 失败:`, err);
         return { params: [] }; // 失败时返回空数组
       })
     );
-    
+
     // 等待所有请求完成
     const results = await Promise.all(requests);
-    
+
     // 处理所有结果
-    results.forEach(res => {
+    results.forEach((res) => {
       if (res && res.params) {
         unackAlarmList.push(...res.params);
       }
     });
-    
+
     console.log(`获取到 ${unackAlarmList.length} 条告警数据`, unackAlarmList);
-    
+
     // 使用 Pinia store 处理报警数据
     alarmStore.updateUnackAlarms(unackAlarmList);
-    
+
     // 更新本地数据（用于显示）
     alarmData.value = alarmStore.unackAlarms;
-    
+
     // 播放需要播报的报警语音
     alarmStore.playVoiceAlarms();
-    
-    console.log('报警数据已更新到 store');
-    console.log('未确认报警数量:', alarmStore.unackAlarmCount);
-    console.log('需要播报的报警数量:', alarmStore.voiceAlarms.length);
+
+    console.log("报警数据已更新到 store");
+    console.log("未确认报警数量:", alarmStore.unackAlarmCount);
+    console.log("需要播报的报警数量:", alarmStore.voiceAlarms.length);
 
     // 内存优化：限制报警数据数量，避免无限累积
     const MAX_ALARM_COUNT = 100000; // 可以调整这个数值
     if (alarmData.value.length > MAX_ALARM_COUNT) {
-      console.warn(`报警数据过多(${alarmData.value.length}条)，清理旧数据，保留最新${MAX_ALARM_COUNT}条`);
+      console.warn(
+        `报警数据过多(${alarmData.value.length}条)，清理旧数据，保留最新${MAX_ALARM_COUNT}条`
+      );
       // 保留最新的数据
       const sortedData = alarmData.value
-        .sort((a, b) => new Date(b.time || b.timestamp || 0) - new Date(a.time || a.timestamp || 0))
+        .sort(
+          (a, b) =>
+            new Date(b.time || b.timestamp || 0) -
+            new Date(a.time || a.timestamp || 0)
+        )
         .slice(0, MAX_ALARM_COUNT);
       alarmData.value = sortedData;
       alarmStore.updateUnackAlarms(sortedData);
@@ -292,7 +575,7 @@ const loopQueryUnackAlarmList = async () => {
 
     // console.log('alarmData.value 已更新:', alarmData.value);
   } catch (error) {
-    console.error('批量请求失败:', error);
+    console.error("批量请求失败:", error);
   } finally {
     if (alarmtTableRef.value) {
       alarmtTableRef.value.loading = false;
@@ -309,7 +592,11 @@ const getAllStationIps = computed(() => {
         if (workshop.children) {
           workshop.children.forEach((station) => {
             if (station.ip) {
-              ips.push({ ip: station.ip, name: station.name });
+              ips.push({
+                ip: station.ip,
+                port: station.port || station.httpport,
+                name: station.name,
+              });
             }
           });
         }
@@ -317,6 +604,14 @@ const getAllStationIps = computed(() => {
     }
   });
   return ips;
+});
+
+const wsStations = computed(() => {
+  return getAllStationIps.value.map(item => ({
+    name: item.name,
+    ip: item.ip,
+    port: item.port,
+  }));
 });
 
 const computedStationFlat = computed(() => {
@@ -413,6 +708,27 @@ const toggleSidebar = () => {
   emit("sidebar-toggle", isCollapsed.value);
   console.log("侧边栏 - 切换状态:", isCollapsed.value ? "收缩" : "展开");
 };
+
+// 监听站点变化，智能管理 WebSocket 连接
+watch(
+  () => wsStations.value,
+  (newStations, oldStations) => {
+    console.log('站点配置变化，智能管理 WebSocket 连接');
+    console.log('新站点:', newStations);
+    console.log('旧站点:', oldStations);
+    
+    // 使用智能连接管理方法
+    updateStationConnections(
+      newStations,
+      oldStations,
+      handleWebSocketMessage,
+      handleWebSocketError,
+      handleWebSocketConnect,
+      handleWebSocketDisconnect
+    );
+  },
+  { deep: true, immediate: false }
+);
 </script>
 
 <template>
@@ -433,14 +749,14 @@ const toggleSidebar = () => {
       :close-on-click-modal="false"
       :close-on-press-escape="false"
     >
-      <AlarmtTable 
-        ref="alarmtTableRef" 
-        @refresh-data="loopQueryUnackAlarmList" 
-        @close-page="handleClose" 
+      <AlarmtTable
+        ref="alarmtTableRef"
+        @refresh-data="loopQueryUnackAlarmList"
+        @close-page="handleClose"
         @remove-confirmed-alarms="handleRemoveConfirmedAlarms"
-        :requestAckAlarm="requestAckAlarm" 
-        :stationTree="stationTree" 
-        :alarmData="alarmData" 
+        :requestAckAlarm="requestAckAlarm"
+        :stationTree="stationTree"
+        :alarmData="alarmData"
       />
     </el-dialog>
 
@@ -455,14 +771,21 @@ const toggleSidebar = () => {
       />
 
       <div class="menu-footer">
-        
         <el-button type="danger" @click="handleAlarm">
-          <el-icon class="mr-1 alarm-bell-icon" :class="{ 'alarm-animation': hasUnackAlarms }">
+          <el-icon
+            class="mr-1 alarm-bell-icon"
+            :class="{ 'alarm-animation': hasUnackAlarms }"
+          >
             <BellFilled />
           </el-icon>
           集中报警
           <!-- <span v-if="hasUnackAlarms" class="alarm-badge">{{ alarmData.length }}</span> -->
         </el-button>
+        
+        <!-- 调试按钮 -->
+        <!-- <el-button type="info" size="small" @click="debugAllConnections" style="margin-top: 8px;">
+          🔍 调试连接
+        </el-button> -->
       </div>
     </div>
   </div>
@@ -553,22 +876,22 @@ const toggleSidebar = () => {
     padding: 8px;
     border-top: 1px solid #e4e7ed;
     background: #f8f9fa;
-    
+
     .el-button {
       position: relative;
-      
+
       .alarm-bell-icon {
         position: relative;
         top: -2px;
         font-size: 19px;
         transition: all 0.3s ease;
-        
+
         &.alarm-animation {
           animation: bellShake 1s ease-in-out infinite;
           transform-origin: center;
         }
       }
-      
+
       .alarm-badge {
         position: absolute;
         top: -8px;
@@ -591,7 +914,8 @@ const toggleSidebar = () => {
 
 // 铃铛摇晃动画
 @keyframes bellShake {
-  0%, 100% {
+  0%,
+  100% {
     transform: rotate(0deg);
   }
   10% {
@@ -625,7 +949,8 @@ const toggleSidebar = () => {
 
 // 徽章脉冲动画
 @keyframes badgePulse {
-  0%, 100% {
+  0%,
+  100% {
     transform: scale(1);
     box-shadow: 0 2px 4px rgba(255, 71, 87, 0.3);
   }

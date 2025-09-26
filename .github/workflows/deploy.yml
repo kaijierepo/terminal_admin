@@ -1,0 +1,66 @@
+name: Deploy to Production
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18.x'
+          cache: 'npm'
+          
+      - name: Install dependencies
+        run: npm ci
+        
+      - name: Build project
+        run: npm run build
+        
+      - name: Check build output
+        run: |
+          echo "Build completed successfully!"
+          echo "Build size:"
+          du -sh dist/
+          echo "Build contents:"
+          ls -la dist/
+          
+      - name: Create deployment package
+        run: |
+          cd dist
+          tar -czf ../deployment-$(date +%Y%m%d-%H%M%S).tar.gz .
+          cd ..
+          ls -la deployment-*.tar.gz
+          
+      - name: Upload deployment package
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-package
+          path: deployment-*.tar.gz
+          retention-days: 30
+          
+      - name: Create build info
+        run: |
+          cat > build-info.json << EOF
+          {
+            "buildTime": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "commit": "${{ github.sha }}",
+            "branch": "${{ github.ref_name }}",
+            "buildSize": "$(du -sh dist/ | cut -f1)"
+          }
+          EOF
+          
+      - name: Upload build info
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-info
+          path: build-info.json
+          retention-days: 30

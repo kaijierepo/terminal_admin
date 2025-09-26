@@ -9,7 +9,12 @@
     "preview": "vite preview",
     "serve": "python serve.py",
     "serve-win": "serve.bat",
-    "build-and-serve": "npm run build && npm run serve-win"
+    "build-and-serve": "npm run build && npm run serve-win",
+    "lint": "eslint . --ext .vue,.js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix --ignore-path .gitignore",
+    "type-check": "vue-tsc --noEmit",
+    "build:prod": "vite build --mode production",
+    "build:staging": "vite build --mode staging",
+    "analyze": "vite build --mode analyze"
   },
   "dependencies": {
     "@element-plus/icons-vue": "^2.3.1",

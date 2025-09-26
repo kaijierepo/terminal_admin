@@ -137,7 +137,7 @@ export const useAlarmStore = defineStore("alarm", {
 
       const voiceTexts = this.getVoiceAlarmTexts();
       if (voiceTexts.length > 0) {
-        console.log("开始播放报警语音:", voiceTexts);
+        // console.log("开始播放报警语音:", voiceTexts);
 
         // 使用全局语音API播放
         if (window.speechAPI) {

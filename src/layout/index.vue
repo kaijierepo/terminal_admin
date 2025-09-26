@@ -195,7 +195,7 @@ const getConnectionStatusColor = () => {
   transition: margin-left 0.3s ease;
   
   &.sidebar-collapsed {
-    margin-left: 60px;
+    margin-left: 0px;
   }
 }
 

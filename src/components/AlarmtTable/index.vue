@@ -135,9 +135,9 @@
         :lazy="true"
         :tree-props="{ children: 'children', hasChildren: 'hasChildren' }"
       >
-        <el-table-column type="selection" width="55" />
+        <el-table-column type="selection" width="30" />
 
-        <el-table-column prop="number" label="编号" width="80" align="center" />
+        <el-table-column prop="number" label="编号" width="50" align="center" />
 
         <el-table-column prop="stationName" label="站点名称" width="120" show-overflow-tooltip />
 
@@ -173,8 +173,8 @@
 
         <el-table-column label="恢复状态" width="100" align="center" >
           <template #default="{ row }">
-            <el-tag :type="row.restoeTime ? 'success' : 'danger'">
-              {{ row.restoeTime ? "已恢复" : "未恢复" }}
+            <el-tag :type="row.isRecover ? 'success' : 'danger'">
+              {{ row.isRecover ? "已恢复" : "未恢复" }}
             </el-tag>
           </template>
         </el-table-column>
@@ -229,10 +229,10 @@
     <!-- 底部状态和操作按钮 -->
     <div class="footer-section">
       <div class="status-info">
-        <span>总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条 (当前页显示{{ alarmData.length }}条)</span>
+        <!-- <span>总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条 (当前页显示{{ alarmData.length }}条)</span>
         <span v-if="renderTime > 0" class="performance-info">
           渲染耗时: {{ renderTime.toFixed(2) }}ms
-        </span>
+        </span> -->
       </div>
 
       <div class="action-buttons">
@@ -295,13 +295,13 @@
               <span class="info-label">报警描述:</span>
               <span class="info-value">{{ ackRow?.desc }}</span>
             </div>
-            <div class="info-item" v-if="ackRow?.restoreVal">
+            <!-- <div class="info-item" v-if="ackRow?.restoreVal">
               <span class="info-label">报警恢复值:</span>
               <span class="info-value">{{ ackRow?.restoreVal }}</span>
-            </div>
-            <div class="info-item" v-if="ackRow?.restoeTime">
+            </div> -->
+            <div class="info-item" v-if="ackRow?.recoverTime">
               <span class="info-label">报警恢复时间:</span>
-              <span class="info-value">{{ ackRow?.restoeTime }}</span>
+              <span class="info-value">{{ ackRow?.recoverTime }}</span>
             </div>
           </div>
         </div>
@@ -864,9 +864,9 @@ const confirmAck = async () => {
 
 // 根据告警类型设置行样式
 const getRowClassName = ({ row, rowIndex }) => {
-  console.log("行数据:", row);
-  console.log("alarmType值:", row.type);
-  console.log("行索引:", rowIndex);
+//   console.log("行数据:", row);
+//   console.log("alarmType值:", row.type);
+//   console.log("行索引:", rowIndex);
 
   // 测试：为前两行强制应用样式
   //   if (rowIndex === 0) {
