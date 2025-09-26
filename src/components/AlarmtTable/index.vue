@@ -229,8 +229,8 @@
     <!-- 底部状态和操作按钮 -->
     <div class="footer-section">
       <div class="status-info">
-        <!-- <span>总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条 (当前页显示{{ alarmData.length }}条)</span>
-        <span v-if="renderTime > 0" class="performance-info">
+        <span>总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条 (当前页显示{{ alarmData.length }}条)</span>
+       <!--  <span v-if="renderTime > 0" class="performance-info">
           渲染耗时: {{ renderTime.toFixed(2) }}ms
         </span> -->
       </div>
@@ -595,9 +595,9 @@ const filteredAlarmData = computed(() => {
   // 过滤恢复状态
   const isRecover = (item, type) => {
     if (type === "recover") {
-      return item.restoeTime ? true : false;
+      return item.recoverTime ? true : false;
     } else if (type === "unrecover") {
-      return item.restoeTime ? false : true;
+      return item.recoverTime ? false : true;
     }
     return true;
   };
@@ -745,7 +745,24 @@ const filteredAlarmData = computed(() => {
     )
     .slice()
     .sort((a, b) => {
-      // 按时间降序排序（最新的在前）
+      // 排序规则：先按报警等级，再按时间
+      // 1. 告警 > 预警 > 其他
+      // 2. 同等级内按时间降序（最新的在前）
+      
+      const getAlarmPriority = (item) => {
+        if (item.type && item.type.includes("预警")) return 2; // 次优先级
+        return 1; // 其他类型
+      };
+      
+      const aPriority = getAlarmPriority(a);
+      const bPriority = getAlarmPriority(b);
+      
+      // 先按优先级排序
+      if (aPriority !== bPriority) {
+        return aPriority - bPriority;
+      }
+      
+      // 同优先级内按时间降序排序（最新的在前）
       const timeA = dayjs(a.time).valueOf();
       const timeB = dayjs(b.time).valueOf();
       return timeB - timeA;

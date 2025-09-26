@@ -22,8 +22,10 @@
           <template #dropdown>
             <el-dropdown-menu>
               <el-dropdown-item command="add-line">添加线路</el-dropdown-item>
-              <el-dropdown-item command="add-workshop">添加车间</el-dropdown-item>
-              <el-dropdown-item command="add-station">添加站点</el-dropdown-item>
+              <!-- <el-dropdown-item command="add-workshop">添加车间</el-dropdown-item>
+              <el-dropdown-item command="add-station">添加站点</el-dropdown-item> -->
+              <el-dropdown-item command="export" divided>导出数据</el-dropdown-item>
+              <el-dropdown-item command="import">导入数据</el-dropdown-item>
               <el-dropdown-item command="reset" divided>重置为默认</el-dropdown-item>
             </el-dropdown-menu>
           </template>
@@ -215,7 +217,9 @@ import {
   Plus,
   Minus,
   Setting,
-  MoreFilled
+  MoreFilled,
+  Download,
+  Upload
 } from '@element-plus/icons-vue'
 
 // 定义组件属性
@@ -238,7 +242,7 @@ const props = defineProps({
 })
 
 // 定义组件事件
-const emit = defineEmits(['station-select', 'station-connect', 'node-expand', 'tree-change', 'tree-reset'])
+const emit = defineEmits(['station-select', 'station-connect', 'node-expand', 'tree-change', 'tree-reset', 'data-export', 'data-import'])
 
 // 响应式数据
 const stationTree = ref([])
@@ -418,6 +422,12 @@ const handleHeaderAction = async (command) => {
       break
     case 'add-station':
       openDialog('添加站点', 'station')
+      break
+    case 'export':
+      handleExportData()
+      break
+    case 'import':
+      handleImportData()
       break
     case 'reset':
       try {
@@ -609,6 +619,178 @@ const generateId = (type) => {
   const timestamp = Date.now()
   const random = Math.random().toString(36).substr(2, 5)
   return `${type}_${timestamp}_${random}`
+}
+
+// 导出数据
+const handleExportData = () => {
+  try {
+    // 清理数据，移除展开状态等临时属性
+    const cleanData = (nodes) => {
+      return nodes.map(node => {
+        const cleaned = {
+          id: node.id,
+          name: node.name,
+          type: getNodeType(node)
+        }
+        
+        // 添加站点特有属性
+        if (node.ip) {
+          cleaned.ip = node.ip
+          cleaned.httpport = node.httpport
+        }
+        
+        // 递归处理子节点
+        if (node.children && node.children.length > 0) {
+          cleaned.children = cleanData(node.children)
+        }
+        
+        return cleaned
+      })
+    }
+    
+    const exportData = {
+      version: '1.0',
+      exportTime: new Date().toISOString(),
+      data: cleanData(stationTree.value)
+    }
+    
+    // 创建下载链接
+    const dataStr = JSON.stringify(exportData, null, 2)
+    const dataBlob = new Blob([dataStr], { type: 'application/json' })
+    const url = URL.createObjectURL(dataBlob)
+    
+    // 创建下载链接
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `station-tree-${new Date().toISOString().split('T')[0]}.json`
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    
+    ElMessage.success('数据导出成功')
+    emit('data-export', exportData)
+  } catch (error) {
+    console.error('导出数据失败:', error)
+    ElMessage.error('导出数据失败')
+  }
+}
+
+// 导入数据
+const handleImportData = () => {
+  // 创建文件输入元素
+  const input = document.createElement('input')
+  input.type = 'file'
+  input.accept = '.json'
+  input.style.display = 'none'
+  
+  input.onchange = (event) => {
+    const file = event.target.files[0]
+    if (!file) return
+    
+    const reader = new FileReader()
+    reader.onload = (e) => {
+      try {
+        const jsonData = JSON.parse(e.target.result)
+        
+        // 验证数据格式
+        if (!validateImportData(jsonData)) {
+          ElMessage.error('数据格式不正确，请检查文件内容')
+          return
+        }
+        
+        // 确认导入
+        ElMessageBox.confirm(
+          `确定要导入数据吗？这将替换当前的站点树数据。\n\n导入数据包含：\n- 线路：${countNodes(jsonData.data, 'line')} 个\n- 车间：${countNodes(jsonData.data, 'workshop')} 个\n- 站点：${countNodes(jsonData.data, 'station')} 个`,
+          '导入确认',
+          {
+            confirmButtonText: '确定导入',
+            cancelButtonText: '取消',
+            type: 'warning',
+          }
+        ).then(() => {
+          // 处理导入的数据
+          const processedData = processImportData(jsonData.data)
+          stationTree.value = processedData
+          
+          ElMessage.success('数据导入成功')
+          emit('data-import', processedData)
+          emit('tree-change', processedData)
+        }).catch(() => {
+          ElMessage.info('已取消导入')
+        })
+        
+      } catch (error) {
+        console.error('解析文件失败:', error)
+        ElMessage.error('文件格式错误，请选择正确的JSON文件')
+      }
+    }
+    
+    reader.readAsText(file)
+  }
+  
+  document.body.appendChild(input)
+  input.click()
+  document.body.removeChild(input)
+}
+
+// 验证导入数据格式
+const validateImportData = (data) => {
+  if (!data || typeof data !== 'object') return false
+  if (!Array.isArray(data.data)) return false
+  
+  const validateNode = (node) => {
+    if (!node || typeof node !== 'object') return false
+    if (!node.id || !node.name) return false
+    
+    // 如果是站点，检查必要属性
+    if (node.ip && (!node.httpport || typeof node.httpport !== 'number')) return false
+    
+    // 递归验证子节点
+    if (node.children && Array.isArray(node.children)) {
+      return node.children.every(child => validateNode(child))
+    }
+    
+    return true
+  }
+  
+  return data.data.every(node => validateNode(node))
+}
+
+// 处理导入数据
+const processImportData = (data) => {
+  const processNode = (node) => {
+    const processed = {
+      ...node,
+      expanded: false // 默认收起
+    }
+    
+    if (node.children && Array.isArray(node.children)) {
+      processed.children = node.children.map(child => processNode(child))
+    }
+    
+    return processed
+  }
+  
+  return data.map(node => processNode(node))
+}
+
+// 统计节点数量
+const countNodes = (nodes, type) => {
+  let count = 0
+  
+  const countInNode = (node) => {
+    if (getNodeType(node) === type) {
+      count++
+    }
+    
+    if (node.children && Array.isArray(node.children)) {
+      node.children.forEach(child => countInNode(child))
+    }
+  }
+  
+  nodes.forEach(node => countInNode(node))
+  return count
 }
 
 // 监听全部展开状态

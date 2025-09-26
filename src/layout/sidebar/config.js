@@ -4,17 +4,10 @@ const stationList = [
     acqInterval: 30.0,
     acqMode: "all",
     addr: {
-      ip: "10.239.238.210",
+      ip: "127.0.0.1",
       port: 9999,
     },
-    addrMode: "tcpServer",
-    enableAcq: true,
-    level: "devcie",
-    manageStatus: "managed",
-    nodeID: "20-10.239.238.210",
-    tagBind: "京九线.南昌车间.南昌站",
-    type: "dcqk-sys-device",
-    typeLabel: "道岔缺口站机",
+    tagBind: "测试线.测试车间.测试站",
   },
 ];
 

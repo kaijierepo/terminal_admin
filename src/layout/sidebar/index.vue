@@ -4,7 +4,7 @@ import { getStationList } from "@/api/config";
 import StationTree from "@/components/StationTree/index.vue";
 import AlarmtTable from "@/components/AlarmtTable/index.vue";
 import digTree from "./config";
-import { ArrowLeft, ArrowRight } from "@element-plus/icons-vue";
+import { ArrowLeft, ArrowRight, Setting } from "@element-plus/icons-vue";
 import { requestUnackAlarmList, requestAckAlarm } from "@/api/alarm";
 import { BellFilled } from "@element-plus/icons-vue";
 import { useAlarmStore } from "@/store/modules/alarm";
@@ -23,7 +23,8 @@ const emit = defineEmits([
 const alarmStore = useAlarmStore();
 
 // 初始化 WebSocket 调试工具
-const { testConnection, diagnoseConnection, checkNetworkConnection } = useWebSocketDebug();
+const { testConnection, diagnoseConnection, checkNetworkConnection } =
+  useWebSocketDebug();
 
 // 初始化 WebSocket 管理器
 const {
@@ -44,7 +45,7 @@ const {
   hasConnection,
   getConnectionCount,
   sendSubscriptionToConnection,
-  sendSubscriptionToAllConnections
+  sendSubscriptionToAllConnections,
 } = useWebSocketManager();
 
 const stationTree = ref([]);
@@ -53,6 +54,103 @@ const isCollapsed = ref(false);
 const timer = ref(null);
 const alarmData = ref([]);
 const alarmtTableRef = ref(null);
+
+// 轮询配置
+const POLLING_CONFIG_KEY = "alarm_polling_config";
+const DEFAULT_POLLING_INTERVAL = 20 * 60; // 默认20分钟，单位：秒
+const pollingInterval = ref(DEFAULT_POLLING_INTERVAL); // 轮询间隔（秒）
+const pollingEnabled = ref(true); // 是否启用轮询
+
+// 轮询配置对话框
+const pollingConfigVisible = ref(false);
+const pollingForm = ref({
+  interval: DEFAULT_POLLING_INTERVAL,
+  enabled: true,
+});
+
+// 加载轮询配置
+const loadPollingConfig = () => {
+  try {
+    const saved = localStorage.getItem(POLLING_CONFIG_KEY);
+    if (saved) {
+      const config = JSON.parse(saved);
+      pollingInterval.value = config.interval || DEFAULT_POLLING_INTERVAL;
+      pollingEnabled.value =
+        config.enabled !== undefined ? config.enabled : true;
+      console.log("已加载轮询配置:", config);
+    }
+  } catch (error) {
+    console.error("加载轮询配置失败:", error);
+  }
+};
+
+// 保存轮询配置
+const savePollingConfig = () => {
+  try {
+    const config = {
+      interval: pollingInterval.value,
+      enabled: pollingEnabled.value,
+      lastUpdated: new Date().toISOString(),
+    };
+    localStorage.setItem(POLLING_CONFIG_KEY, JSON.stringify(config));
+    console.log("已保存轮询配置:", config);
+  } catch (error) {
+    console.error("保存轮询配置失败:", error);
+  }
+};
+
+// 更新轮询配置并重启定时器
+const updatePollingConfig = (newInterval, newEnabled) => {
+  pollingInterval.value = newInterval;
+  pollingEnabled.value = newEnabled;
+  savePollingConfig();
+
+  // 重启定时器
+  restartPollingTimer();
+};
+
+// 重启轮询定时器
+const restartPollingTimer = () => {
+  // 清理现有定时器
+  if (timer.value) {
+    clearInterval(timer.value);
+    timer.value = null;
+  }
+
+  // 如果启用轮询，创建新定时器
+  if (pollingEnabled.value) {
+    const intervalMs = pollingInterval.value * 1000;
+    console.log(
+      `重启报警轮询，间隔: ${pollingInterval.value}秒 (${intervalMs}ms)`
+    );
+
+    timer.value = setInterval(() => {
+      loopQueryUnackAlarmList();
+    }, intervalMs);
+  } else {
+    console.log("轮询已禁用");
+  }
+};
+
+// 显示轮询配置对话框
+const showPollingConfig = () => {
+  pollingForm.value = {
+    interval: pollingInterval.value,
+    enabled: pollingEnabled.value,
+  };
+  pollingConfigVisible.value = true;
+};
+
+// 保存轮询设置
+const savePollingSettings = () => {
+  updatePollingConfig(pollingForm.value.interval, pollingForm.value.enabled);
+  pollingConfigVisible.value = false;
+  ElMessage.success(
+    `轮询配置已保存：间隔${pollingForm.value.interval}秒，${
+      pollingForm.value.enabled ? "已启用" : "已禁用"
+    }`
+  );
+};
 
 // 计算是否有未确认的报警
 const hasUnackAlarms = computed(() => {
@@ -113,10 +211,9 @@ const handleRemoveConfirmedAlarms = (confirmedItems) => {
 // WebSocket 事件处理函数
 const handleWebSocketMessage = (connectionId, eventName, ...args) => {
   console.log(`收到 WebSocket 消息: ${connectionId} -> ${eventName}`, args);
-  
+
   // console.log('args[0]:##################', args[0]);
   handleAlarmMessage(connectionId, args[0]);
-
 };
 
 const handleWebSocketError = (connectionId, error) => {
@@ -127,7 +224,7 @@ const handleWebSocketError = (connectionId, error) => {
 const handleWebSocketConnect = (connectionId, socket) => {
   console.log(`WebSocket 连接成功: ${connectionId}`);
   // 连接成功后可以发送认证消息等
-  sendMessage(connectionId, 'auth', { type: 'client', timestamp: Date.now() });
+  sendMessage(connectionId, "auth", { type: "client", timestamp: Date.now() });
 };
 
 const handleWebSocketDisconnect = (connectionId, reason) => {
@@ -138,27 +235,27 @@ const handleWebSocketDisconnect = (connectionId, reason) => {
 // 处理报警消息
 const handleAlarmMessage = (connectionId, alarmData) => {
   console.log(`收到报警消息: ${connectionId}`, alarmData);
-  const [stationName, ip, port] = connectionId.split('-');
+  const [stationName, ip, port] = connectionId.split("-");
   // 检查数据格式，支持两种结构
   let params;
   if (alarmData && alarmData.params) {
     // 格式1: { params: { isAck, uuid, ... } }
-    params = {...alarmData.params, stationName, ip, port};
+    params = { ...alarmData.params, stationName, ip, port };
   } else if (alarmData && (alarmData.isAck !== undefined || alarmData.uuid)) {
     // 格式2: { isAck, uuid, ... } 直接传递
-    params = {...alarmData, stationName, ip, port};
+    params = { ...alarmData, stationName, ip, port };
   } else {
-    console.warn('报警数据格式不正确:', alarmData);
+    console.warn("报警数据格式不正确:", alarmData);
     return;
   }
-  
+
   const { isAck, uuid } = params;
-  
+
   if (!uuid) {
-    console.warn('报警数据缺少 uuid 字段');
+    console.warn("报警数据缺少 uuid 字段");
     return;
   }
-  
+
   if (isAck) {
     // 确认报警：删除相同 uuid 的对象
     handleAlarmAck(uuid);
@@ -172,13 +269,15 @@ const handleAlarmMessage = (connectionId, alarmData) => {
 const handleAlarmAck = (uuid) => {
   console.log(`确认报警，删除 uuid: ${uuid}`);
   const beforeCount = alarmData.value.length;
-  const filteredAlarms = alarmData.value.filter(alarm => alarm.uuid !== uuid);
+  const filteredAlarms = alarmData.value.filter((alarm) => alarm.uuid !== uuid);
   const afterCount = filteredAlarms.length;
-  
+
   if (beforeCount > afterCount) {
     alarmData.value = filteredAlarms;
     alarmStore.updateUnackAlarms(filteredAlarms);
-    console.log(`✅ 已删除 uuid ${uuid}，从 ${beforeCount} 条减少到 ${afterCount} 条报警`);
+    console.log(
+      `✅ 已删除 uuid ${uuid}，从 ${beforeCount} 条减少到 ${afterCount} 条报警`
+    );
   } else {
     console.log(`⚠️ 未找到 uuid ${uuid} 的报警记录`);
   }
@@ -188,30 +287,32 @@ const handleAlarmAck = (uuid) => {
 const handleAlarmUpdate = (alarmParams) => {
   const { uuid } = alarmParams;
   console.log(`处理报警数据，uuid: ${uuid}`);
-  
+
   // 检查是否已存在相同 uuid 的报警
-  const existingIndex = alarmData.value.findIndex(alarm => alarm.uuid === uuid);
-  
+  const existingIndex = alarmData.value.findIndex(
+    (alarm) => alarm.uuid === uuid
+  );
+
   if (existingIndex !== -1) {
     // 更新已存在的报警
     console.log(`🔄 更新已存在的报警，uuid: ${uuid}`);
     const oldAlarm = alarmData.value[existingIndex];
     alarmData.value[existingIndex] = { ...oldAlarm, ...alarmParams };
-    console.log('更新前:', oldAlarm);
-    console.log('更新后:', alarmData.value[existingIndex]);
+    console.log("更新前:", oldAlarm);
+    console.log("更新后:", alarmData.value[existingIndex]);
   } else {
     // 新增报警
     console.log(`➕ 新增报警，uuid: ${uuid}`);
     alarmData.value.push(alarmParams);
-    console.log('新增报警数据:', alarmParams);
+    console.log("新增报警数据:", alarmParams);
   }
-  
+
   // 更新 store 中的数据
   alarmStore.updateUnackAlarms(alarmData.value);
-  
+
   // 播放语音报警
   alarmStore.playVoiceAlarms();
-  
+
   console.log(`📊 当前报警总数: ${alarmData.value.length}`);
 };
 
@@ -341,8 +442,6 @@ watch(
   }
 );
 
-
-
 onUnmounted(() => {
   // 清理定时器
   if (timer.value) {
@@ -368,6 +467,8 @@ onUnmounted(() => {
 });
 
 onMounted(() => {
+  // 加载轮询配置
+  loadPollingConfig();
   // 从 localStorage 加载语音时间戳
   alarmStore.loadVoiceTimestamp();
 
@@ -398,14 +499,8 @@ onMounted(() => {
   //  });
   loopQueryUnackAlarmList();
 
-  // 确保清理之前的定时器
-  if (timer.value) {
-    clearInterval(timer.value);
-  }
-
-  timer.value = setInterval(() => {
-    loopQueryUnackAlarmList();
-  }, 20 * 60 * 1000);
+  // 启动轮询定时器
+  restartPollingTimer();
 
   // 添加连接健康状态监控定时器
   const healthTimer = setInterval(() => {
@@ -418,11 +513,11 @@ onMounted(() => {
 
 // 初始化 WebSocket 连接
 const initializeWebSocketConnections = () => {
-  console.log('初始化 WebSocket 连接...',  wsStations.value);
-  
+  console.log("初始化 WebSocket 连接...", wsStations.value);
+
   // 获取所有站点信息
   const stations = wsStations.value;
-  
+
   if (stations.length > 0) {
     // 创建站点 WebSocket 连接
     createStationConnections(
@@ -432,7 +527,7 @@ const initializeWebSocketConnections = () => {
       handleWebSocketConnect,
       handleWebSocketDisconnect
     );
-    
+
     console.log(`已创建 ${stations.length} 个 WebSocket 连接`);
   }
 };
@@ -440,15 +535,16 @@ const initializeWebSocketConnections = () => {
 // 添加连接健康状态监控
 const monitorConnectionHealth = () => {
   const health = getAllConnectionHealth();
-  console.log('WebSocket 连接健康状态:', health);
-  
+  console.log("WebSocket 连接健康状态:", health);
+
   // 检查是否有连接异常
-  const unhealthyConnections = Object.entries(health).filter(([id, status]) => 
-    status.status === 'disconnected' && status.reconnectCount > 3
+  const unhealthyConnections = Object.entries(health).filter(
+    ([id, status]) =>
+      status.status === "disconnected" && status.reconnectCount > 3
   );
-  
+
   if (unhealthyConnections.length > 0) {
-    console.warn('发现异常连接，尝试重连:', unhealthyConnections);
+    console.warn("发现异常连接，尝试重连:", unhealthyConnections);
     const stationIds = unhealthyConnections.map(([id]) => id);
     reconnectStations(stationIds);
   }
@@ -456,7 +552,7 @@ const monitorConnectionHealth = () => {
 
 // 手动发送订阅命令到所有连接
 const sendSubscriptionToAll = () => {
-  console.log('手动发送订阅命令到所有连接');
+  console.log("手动发送订阅命令到所有连接");
   const successCount = sendSubscriptionToAllConnections();
   console.log(`成功向 ${successCount} 个连接发送订阅命令`);
   return successCount;
@@ -472,15 +568,15 @@ const sendSubscriptionToStation = (stationId) => {
 const debugWebSocketConnection = async (station) => {
   const url = `ws://${station.ip}:${station.port}`;
   console.log(`🔍 调试 WebSocket 连接: ${station.name} -> ${url}`);
-  
+
   try {
     // 检查网络连接
     checkNetworkConnection();
-    
+
     // 诊断连接问题
     const result = await diagnoseConnection(url);
     console.log(`诊断结果 (${station.name}):`, result);
-    
+
     return result;
   } catch (error) {
     console.error(`调试失败 (${station.name}):`, error);
@@ -490,29 +586,29 @@ const debugWebSocketConnection = async (station) => {
 
 // 批量调试所有站点连接
 const debugAllConnections = async () => {
-  console.log('🔍 开始调试所有 WebSocket 连接...');
+  console.log("🔍 开始调试所有 WebSocket 连接...");
   const stations = wsStations.value;
   const results = [];
-  
+
   for (const station of stations) {
     console.log(`\n--- 调试站点: ${station.name} ---`);
     const result = await debugWebSocketConnection(station);
     results.push({
       station: station.name,
       url: `ws://${station.ip}:${station.port}`,
-      ...result
+      ...result,
     });
   }
-  
-  console.log('\n📊 调试结果汇总:');
-  results.forEach(result => {
+
+  console.log("\n📊 调试结果汇总:");
+  results.forEach((result) => {
     if (result.success) {
       console.log(`✅ ${result.station}: 连接正常`);
     } else {
       console.log(`❌ ${result.station}: 连接失败 - ${result.error}`);
     }
   });
-  
+
   return results;
 };
 
@@ -607,7 +703,7 @@ const getAllStationIps = computed(() => {
 });
 
 const wsStations = computed(() => {
-  return getAllStationIps.value.map(item => ({
+  return getAllStationIps.value.map((item) => ({
     name: item.name,
     ip: item.ip,
     port: item.port,
@@ -702,6 +798,34 @@ const handleTreeReset = () => {
   resetToDefault();
 };
 
+// 处理数据导出
+const handleDataExport = (exportData) => {
+  console.log("导出站点树数据:", exportData);
+  // 可以在这里添加额外的导出逻辑，比如保存到本地存储
+  ElMessage.success(`数据导出成功，包含 ${exportData.data.length} 个线路`);
+};
+
+// 处理数据导入
+const handleDataImport = (importData) => {
+  console.log("导入站点树数据:", importData);
+  // 更新站点树数据
+  stationTree.value = importData;
+
+  // 重新初始化 WebSocket 连接
+  if (importData && importData.length > 0) {
+    console.log("重新初始化 WebSocket 连接...");
+    // 关闭现有连接
+    closeAllConnections();
+
+    // 重新创建连接
+    nextTick(() => {
+      initializeWebSocketConnections();
+    });
+  }
+
+  ElMessage.success("数据导入成功，WebSocket 连接已更新");
+};
+
 // 切换侧边栏收缩状态
 const toggleSidebar = () => {
   isCollapsed.value = !isCollapsed.value;
@@ -713,10 +837,10 @@ const toggleSidebar = () => {
 watch(
   () => wsStations.value,
   (newStations, oldStations) => {
-    console.log('站点配置变化，智能管理 WebSocket 连接');
-    console.log('新站点:', newStations);
-    console.log('旧站点:', oldStations);
-    
+    console.log("站点配置变化，智能管理 WebSocket 连接");
+    console.log("新站点:", newStations);
+    console.log("旧站点:", oldStations);
+
     // 使用智能连接管理方法
     updateStationConnections(
       newStations,
@@ -760,6 +884,50 @@ watch(
       />
     </el-dialog>
 
+    <!-- 轮询配置对话框 -->
+    <el-dialog
+      v-model="pollingConfigVisible"
+      title="报警配置"
+      width="500px"
+      :close-on-click-modal="false"
+    >
+      <el-form :model="pollingForm" label-width="120px">
+        <el-form-item label="轮询间隔">
+          <el-input-number
+            v-model="pollingForm.interval"
+            :min="10"
+            :max="3600"
+            :step="10"
+            controls-position="right"
+            style="width: 200px"
+          />
+          <span style="margin-left: 10px; color: #909399">秒</span>
+        </el-form-item>
+
+        <el-form-item label="启用轮询">
+          <el-switch v-model="pollingForm.enabled" />
+        </el-form-item>
+
+        <el-form-item label="当前状态">
+          <el-tag :type="pollingEnabled ? 'success' : 'info'">
+            {{ pollingEnabled ? "已启用" : "已禁用" }}
+          </el-tag>
+          <span style="margin-left: 10px; color: #909399">
+            间隔: {{ pollingInterval }}秒
+          </span>
+        </el-form-item>
+      </el-form>
+
+      <template #footer>
+        <div class="dialog-footer">
+          <el-button size="small" @click="pollingConfigVisible = false">取消</el-button>
+          <el-button size="small" type="primary" @click="savePollingSettings"
+            >保存配置</el-button
+          >
+        </div>
+      </template>
+    </el-dialog>
+
     <div class="menu-content" v-show="!isCollapsed">
       <StationTree
         :data="stationTree"
@@ -768,20 +936,29 @@ watch(
         @node-expand="handleNodeExpand"
         @tree-change="handleTreeChange"
         @tree-reset="handleTreeReset"
+        @data-export="handleDataExport"
+        @data-import="handleDataImport"
       />
 
       <div class="menu-footer">
-        <el-button type="danger" @click="handleAlarm">
-          <el-icon
-            class="mr-1 alarm-bell-icon"
-            :class="{ 'alarm-animation': hasUnackAlarms }"
-          >
-            <BellFilled />
-          </el-icon>
-          集中报警
-          <!-- <span v-if="hasUnackAlarms" class="alarm-badge">{{ alarmData.length }}</span> -->
-        </el-button>
-        
+        <div style="flex: 1;text-align: center;">
+          <el-button type="danger" @click="handleAlarm">
+            <el-icon
+              class="mr-1 alarm-bell-icon"
+              :class="{ 'alarm-animation': hasUnackAlarms }"
+            >
+              <BellFilled />
+            </el-icon>
+            集中报警
+            <!-- <span v-if="hasUnackAlarms" class="alarm-badge">{{ alarmData.length }}</span> -->
+          </el-button>
+        </div>
+
+        <!-- 轮询配置按钮 -->
+        <el-icon class="mr-1 setting-icon" @click="showPollingConfig"
+          ><Setting
+        /></el-icon>
+
         <!-- 调试按钮 -->
         <!-- <el-button type="info" size="small" @click="debugAllConnections" style="margin-top: 8px;">
           🔍 调试连接
@@ -872,10 +1049,18 @@ watch(
   }
 
   .menu-footer {
-    text-align: center;
+    display: flex;
+    align-items: center;
     padding: 8px;
     border-top: 1px solid #e4e7ed;
     background: #f8f9fa;
+
+    .setting-icon {
+      font-size: 19px;
+      align-items: flex-end;
+      cursor: pointer;
+      color: grey;
+    }
 
     .el-button {
       position: relative;
