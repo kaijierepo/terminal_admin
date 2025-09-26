@@ -13,7 +13,7 @@ export const constantRouterMap = [
     component: Layout,
   },
   {
-    path: '/backstage',
+    path: '/tool',
     name: 'BackstageRoot',
     redirect: '/station',
     meta: {

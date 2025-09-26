@@ -159,7 +159,7 @@
           show-overflow-tooltip
         />
 
-        <el-table-column prop="desc" label="报警描述" min-width="150" show-overflow-tooltip />
+        <el-table-column prop="detail" label="报警描述" min-width="150" show-overflow-tooltip />
 
         <!-- <el-table-column
           prop="temperature"
@@ -190,7 +190,7 @@
         </el-table-column> -->
 
         <el-table-column
-          prop="restoeTime"
+          prop="recoverTime"
           label="恢复时间"
           width="180"
           align="center"
