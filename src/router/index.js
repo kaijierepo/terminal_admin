@@ -36,7 +36,8 @@ export const constantRouterMap = [
         name: 'stationManage',
         meta: {
           title: '站点管理',
-          icon: 'ant-design:table-outlined'
+          icon: 'ant-design:table-outlined',
+          showStationSelector: false,
         }
       },
     ]
@@ -56,7 +57,8 @@ export const constantRouterMap = [
         component: () => import('@/views/paramConf/projectConf/index.vue'),
         name: 'projectConf',
         meta: {
-          title: '参数检查'
+          title: '参数检查',
+          showStationSelector: false,
         }
       },
       {
@@ -64,7 +66,8 @@ export const constantRouterMap = [
         component: () => import('@/views/paramConf/batchSet/index.vue'),
         name: 'batchSet',
         meta: {
-          title: '参数配置'
+          title: '参数配置',
+          showStationSelector: false,
         }
       },
     ]
@@ -85,7 +88,8 @@ export const constantRouterMap = [
         name: 'electricParamsReport',
         meta: {
           title: '电参数报表',
-          icon: 'ant-design:table-outlined'
+          icon: 'ant-design:table-outlined',
+          showStationSelector: true,
         }
       },
     ]
@@ -97,7 +101,7 @@ export const constantRouterMap = [
     name: 'dragForce',
     redirect: 'dragForce/report',
     meta: {
-      title: '电参数',
+      title: '阻力',
       icon: 'ant-design:table-outlined'
     },
     children: [
@@ -107,7 +111,16 @@ export const constantRouterMap = [
         name: 'dragForceReport',
         meta: {
           title: '阻力报表',
-          icon: 'ant-design:table-outlined'
+          showStationSelector: true,
+        }
+      },
+      {
+        path: 'stat',
+        component: () => import('@/views/resistance/stat/index.vue'),
+        name: 'resistanceStat',
+        meta: {
+          title: '静态保持力统计',
+          showStationSelector: false,
         }
       },
     ]
@@ -129,7 +142,8 @@ export const constantRouterMap = [
         name: 'pullAudioDownload',
         meta: {
           title: '扳动历史音频下载',
-          icon: 'ant-design:table-outlined'
+          icon: 'ant-design:table-outlined',
+          showStationSelector: true,
         }
       },
     ]
