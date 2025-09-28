@@ -5,7 +5,7 @@ const stationList = [
     acqMode: "all",
     addr: {
       ip: "127.0.0.1",
-      port: 9999,
+      port: 81,
     },
     tagBind: "测试线.测试车间.测试站",
   },

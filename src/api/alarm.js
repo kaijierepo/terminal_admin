@@ -3,6 +3,31 @@ import { createService } from "@/utils/request";
 import axios from "axios";
 
 // 确认报警 {"user":"","jsonrpc":"2.0","method":"ackAlarm","params":{"uuid":"2025-09-25 12:44:221#.1#J4油压油位采集设备故障未知无位置","ackInfo":"123","time":"2025-09-25 12:44:22","tag":"1#.1#J4","type":"油压油位采集设备故障"},"id":1}
+export const requestSimialrAlarm = (
+  ip,
+  options = { uuid, port: 81, timeout: 10000, name: "" }
+) => {
+  return axios
+    .post(
+      `http://${ip}:${options.port || 81}/api/rpc`,
+      {
+        jsonrpc: "2.0",
+        method: "getUnOkHisAlarm",
+        params: {
+          uuid: options.uuid,
+        },
+      },
+      {
+        timeout: options.timeout || 10000, // 10秒超时
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    )
+    .then((res) => {
+      return res.data;
+    });
+};
 
 export const requestAckAlarm = (
   ip,

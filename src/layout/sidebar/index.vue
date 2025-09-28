@@ -5,7 +5,7 @@ import StationTree from "@/components/StationTree/index.vue";
 import AlarmtTable from "@/components/AlarmtTable/index.vue";
 import digTree from "./config";
 import { ArrowLeft, ArrowRight, Setting } from "@element-plus/icons-vue";
-import { requestUnackAlarmList, requestAckAlarm } from "@/api/alarm";
+import { requestUnackAlarmList, requestAckAlarm, requestSimialrAlarm } from "@/api/alarm";
 import { BellFilled } from "@element-plus/icons-vue";
 import { useAlarmStore } from "@/store/modules/alarm";
 import { useWebSocketManager } from "@/mixins/websocketManager";
@@ -881,6 +881,7 @@ watch(
         :requestAckAlarm="requestAckAlarm"
         :stationTree="stationTree"
         :alarmData="alarmData"
+        :requestSimialrAlarm="requestSimialrAlarm"
       />
     </el-dialog>
 

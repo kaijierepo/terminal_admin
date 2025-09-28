@@ -122,6 +122,7 @@
 
     <!-- 数据表格 -->
     <div class="table-section">
+      {{ console.log("*************alarmData**************", alarmData) }}
       <el-table
         size="small"
         :data="alarmData"
@@ -139,9 +140,19 @@
 
         <el-table-column prop="number" label="编号" width="50" align="center" />
 
-        <el-table-column prop="stationName" label="站点名称" width="120" show-overflow-tooltip />
+        <el-table-column
+          prop="stationName"
+          label="站点名称"
+          width="120"
+          show-overflow-tooltip
+        />
 
-        <el-table-column prop="tag" label="设备" width="150" show-overflow-tooltip />
+        <el-table-column
+          prop="tag"
+          label="设备"
+          width="150"
+          show-overflow-tooltip
+        />
 
         <el-table-column label="报警类型" width="180" show-overflow-tooltip>
           <template #default="{ row }">
@@ -149,7 +160,12 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="acqtype" label="采集方式" width="100" show-overflow-tooltip />
+        <el-table-column
+          prop="acqtype"
+          label="采集方式"
+          width="100"
+          show-overflow-tooltip
+        />
 
         <el-table-column
           prop="objstatus"
@@ -159,19 +175,24 @@
           show-overflow-tooltip
         />
 
-        <el-table-column prop="detail" label="报警描述" min-width="150" show-overflow-tooltip />
+        <el-table-column
+          prop="detail"
+          label="报警描述"
+          min-width="150"
+          show-overflow-tooltip
+        />
 
-        <!-- <el-table-column
+        <el-table-column
           prop="temperature"
           label="温度/24h最小/最大"
           width="180"
           align="center"
         >
-        </el-table-column> -->
+        </el-table-column>
 
-        <el-table-column prop="time" label="报警时间" width="160" />
+        <!-- <el-table-column prop="time" label="报警时间" width="160" /> -->
 
-        <el-table-column label="恢复状态" width="100" align="center" >
+        <el-table-column label="恢复状态" width="100" align="center">
           <template #default="{ row }">
             <el-tag :type="row.isRecover ? 'success' : 'danger'">
               {{ row.isRecover ? "已恢复" : "未恢复" }}
@@ -208,7 +229,7 @@
           </template>
         </el-table-column>
       </el-table>
-      
+
       <!-- 分页组件 -->
       <div class="pagination-section">
         <el-pagination
@@ -229,8 +250,11 @@
     <!-- 底部状态和操作按钮 -->
     <div class="footer-section">
       <div class="status-info">
-        <span>总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条 (当前页显示{{ alarmData.length }}条)</span>
-       <!--  <span v-if="renderTime > 0" class="performance-info">
+        <span
+          >总告警条数{{ alarmCount }}条,预警条数{{ warningCount }}条
+          (当前页显示{{ alarmData.length }}条)</span
+        >
+        <!--  <span v-if="renderTime > 0" class="performance-info">
           渲染耗时: {{ renderTime.toFixed(2) }}ms
         </span> -->
       </div>
@@ -267,63 +291,136 @@
       </div>
     </div>
 
+    <!-- 报警确认对话框 -->
     <el-dialog
       v-model="ackDialogVisible"
-      title="确认报警"
-      width="400px"
+      title="报警确认"
+      width="900px"
       :append-to-body="true"
-      :z-index="3000"
-      class="ack-dialog"
+      :z-index="2000"
+      class="alarm-confirm-dialog"
+      :close-on-click-modal="false"
     >
-      <div class="ack-dialog-content">
-        <div class="alarm-info-section">
-          <h4 class="section-title">报警信息</h4>
-          <div class="info-grid">
+      <div class="alarm-confirm-content">
+        <!-- 报警基本信息 -->
+        <div class="alarm-basic-info">
+          <div class="info-row">
             <div class="info-item">
-              <span class="info-label">报警设备:</span>
+              <span class="info-label">设备:</span>
               <span class="info-value">{{ ackRow?.tag }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">报警时间:</span>
-              <span class="info-value">{{ ackRow?.time }}</span>
-            </div>
-            <div class="info-item">
               <span class="info-label">报警类型:</span>
-              <span class="info-value alarm-type">{{ ackRow?.type }}</span>
+              <span class="info-value">{{ ackRow?.type }}</span>
             </div>
             <div class="info-item">
-              <span class="info-label">报警描述:</span>
-              <span class="info-value">{{ ackRow?.desc }}</span>
-            </div>
-            <!-- <div class="info-item" v-if="ackRow?.restoreVal">
-              <span class="info-label">报警恢复值:</span>
-              <span class="info-value">{{ ackRow?.restoreVal }}</span>
-            </div> -->
-            <div class="info-item" v-if="ackRow?.recoverTime">
-              <span class="info-label">报警恢复时间:</span>
-              <span class="info-value">{{ ackRow?.recoverTime }}</span>
+              <span class="info-label">发生时间:</span>
+              <span class="info-value">{{ ackRow?.time }}</span>
             </div>
           </div>
         </div>
 
-        <div class="confirm-section">
-          <h4 class="section-title">确认信息</h4>
-          <el-input
-            type="textarea"
-            v-model="ackInfo"
-            placeholder="请输入确认信息（可选）"
-            :rows="3"
-            maxlength="200"
-            show-word-limit
-            class="confirm-textarea"
-          />
+        <!-- 同类报警列表 -->
+        <div class="similar-alarms-section">
+          <h4 class="section-title">
+            未确认的同类告警列表 (双击显示详细信息):
+          </h4>
+          <el-table
+            size="small"
+            :data="similarAlarms"
+            @row-dblclick="handleAlarmDetail"
+            highlight-current-row
+            style="width: 100%"
+            max-height="200"
+          >
+            <el-table-column prop="number" label="编号" width="60" />
+            <el-table-column prop="stationName" label="站点名称" width="100" />
+            <el-table-column prop="tag" label="设备" width="80" />
+            <el-table-column prop="type" label="报警类型" width="120" />
+            <el-table-column prop="acqtype" label="采集方式" width="100" />
+            <el-table-column prop="objstatus" label="定反位" width="80" />
+            <el-table-column prop="detail" label="报警描述" width="150" />
+            <el-table-column
+              prop="temperature"
+              label="温度/24h最..."
+              width="120"
+            />
+            <el-table-column prop="time" label="报警时间" width="140" />
+            <el-table-column label="恢复状态" width="80">
+              <template #default="{ row }">
+                <el-tag
+                  size="small"
+                  :type="row.isRecover ? 'success' : 'danger'"
+                >
+                  {{ row.isRecover ? "已恢复" : "未恢复" }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="recoverTime" label="恢复时间" width="120" />
+          </el-table>
+        </div>
+
+        <!-- 报警确认选项 -->
+        <div class="confirm-options-section">
+          <div class="confirm-option">
+            <span class="option-label">报警确认选项:</span>
+            <el-select
+              size="small"
+              v-model="selectedConfirmOption"
+              placeholder="请选择确认选项"
+              style="width: 200px"
+              clearable
+              popper-class="select-popper-high-zindex"
+              teleported
+              append-to-body
+              @change="handleConfirmOptionChange"
+            >
+              <el-option
+                v-for="option in confirmOptions"
+                :key="option.value"
+                :label="option.label"
+                :value="option.value"
+              />
+            </el-select>
+          </div>
+
+          <div class="confirm-notes">
+            <span class="option-label"
+              >报警确认备注 ({{ ackInfo.length }}/50):</span
+            >
+            <el-input
+              type="textarea"
+              v-model="ackInfo"
+              placeholder="请输入确认备注"
+              :rows="4"
+              maxlength="50"
+              show-word-limit
+              class="notes-textarea"
+            />
+          </div>
+
+          <!-- <div class="confirm-checkbox">
+            <el-checkbox v-model="noVoiceToday">
+              今天相同报警不再语音提示
+            </el-checkbox>
+          </div> -->
+
+          <!-- <div class="preset-options">
+            <el-button type="info" size="small">预置选项</el-button>
+          </div> -->
         </div>
       </div>
 
       <template #footer>
         <div class="dialog-footer">
-          <el-button @click="ackDialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="confirmAck">确认报警</el-button>
+          <!-- <el-button @click="clearAndRewrite">清除重写(B)</el-button> -->
+          <el-button type="primary" @click="confirmAlarm"
+            >报警确认(Q)</el-button
+          >
+          <!-- <el-button type="success" @click="saveConfirmOptions"
+            >保存确认选项</el-button
+          > -->
+          <el-button @click="ackDialogVisible = false">关闭(X)</el-button>
         </div>
       </template>
     </el-dialog>
@@ -368,6 +465,10 @@ const props = defineProps({
     default: () => [],
   },
   requestAckAlarm: {
+    type: Function,
+    default: () => {},
+  },
+  requestSimialrAlarm: {
     type: Function,
     default: () => {},
   },
@@ -431,13 +532,44 @@ const ackDialogVisible = ref(false);
 const ackRow = ref(null);
 const ackInfo = ref("");
 
-const handleRowClick = (row) => {
-  if (row.url) {
-    // 设置对话框标题（可配置）
-    dialogTitle.value = `缺口历史记录 - ${row.stationName || "未知站点"}`;
-    dialogUrl.value = row.url;
-    dialogVisible.value = true;
-  }
+// 报警确认对话框新增数据
+const selectedConfirmOption = ref("");
+const noVoiceToday = ref(false);
+const confirmOptions = ref([
+  { label: "作业影响", value: "作业影响" },
+  { label: "预偏", value: "预偏" },
+  { label: "监测设备不良", value: "监测设备不良" },
+  { label: "盲买缺口变动,具体处理情况见备注", value: "盲买缺口变动,具体处理情况见备注" },
+  { label: "油箱漏油", value: "油箱漏油" },
+  { label: "天窗内报警", value: "天窗内报警" },
+  { label: "其他,具体情况见备注", value: "其他,具体情况见备注" },
+]);
+const similarAlarms = ref([]);
+
+
+const handleConfirmOptionChange = (value) => {
+  ackInfo.value =  value || "";
+};
+
+const getSimilarAlarms = async (ip, uuid) => {
+  const res = await props.requestSimialrAlarm(ip, { uuid });
+  console.log("res", res);
+  return res;
+};
+
+const handleRowClick = async (row) => {
+  // 打开报警确认对话框
+  console.log("row", row);
+  
+  const res = await getSimilarAlarms(row.ip, row.uuid);
+  let remoteSimilarAlarms = [];
+  if(res.result && res.result.length > 0) {
+    remoteSimilarAlarms = res.result;
+  } 
+
+  similarAlarms.value = [...remoteSimilarAlarms, row];
+  ackRow.value = row;
+  ackDialogVisible.value = true;
 };
 
 // 关闭对话框
@@ -748,20 +880,20 @@ const filteredAlarmData = computed(() => {
       // 排序规则：先按报警等级，再按时间
       // 1. 告警 > 预警 > 其他
       // 2. 同等级内按时间降序（最新的在前）
-      
+
       const getAlarmPriority = (item) => {
         if (item.type && item.type.includes("预警")) return 2; // 次优先级
         return 1; // 其他类型
       };
-      
+
       const aPriority = getAlarmPriority(a);
       const bPriority = getAlarmPriority(b);
-      
+
       // 先按优先级排序
       if (aPriority !== bPriority) {
         return aPriority - bPriority;
       }
-      
+
       // 同优先级内按时间降序排序（最新的在前）
       const timeA = dayjs(a.time).valueOf();
       const timeB = dayjs(b.time).valueOf();
@@ -796,30 +928,35 @@ const filteredAlarmData = computed(() => {
 // 分页后的数据（用于表格显示）
 const alarmData = computed(() => {
   renderStartTime.value = performance.now();
-  
+
   const start = (currentPage.value - 1) * pageSize.value;
   const end = start + pageSize.value;
-  
+
   // 更新总数据量
   totalItems.value = filteredAlarmData.value.length;
-  
+
   const result = filteredAlarmData.value.slice(start, end);
-  
+
   // 使用 nextTick 确保 DOM 更新后计算渲染时间
   nextTick(() => {
     renderEndTime.value = performance.now();
     if (renderTime.value > 100) {
-      console.warn(`表格渲染耗时: ${renderTime.value.toFixed(2)}ms，数据量: ${result.length}`);
+      console.warn(
+        `表格渲染耗时: ${renderTime.value.toFixed(2)}ms，数据量: ${
+          result.length
+        }`
+      );
     }
   });
-  
+
   return result;
 });
 
 // 计算属性
 const alarmCount = computed(() => filteredAlarmData.value.length);
 const warningCount = computed(
-  () => filteredAlarmData.value.filter((item) => item.type.includes("预警")).length
+  () =>
+    filteredAlarmData.value.filter((item) => item.type.includes("预警")).length
 );
 
 // 获取带消音标记的报警类型显示
@@ -843,7 +980,15 @@ const handleSelectionChange = (selection) => {
 };
 
 // 报警确认方法
-const handleAckAlarm = (row, requestAckAlarm) => {
+const handleAckAlarm = async (row, requestAckAlarm) => {
+  console.log("row==============", row);
+  const res = await getSimilarAlarms(row.ip, row.uuid);
+  let remoteSimilarAlarms = [];
+  if(res.result && res.result.length > 0) {
+    remoteSimilarAlarms = res.result;
+  } 
+
+  similarAlarms.value = [...remoteSimilarAlarms, row];
   ackRow.value = row;
   ackDialogVisible.value = true;
 };
@@ -879,11 +1024,58 @@ const confirmAck = async () => {
   }
 };
 
+// 新增的报警确认对话框方法
+const handleAlarmDetail = (row) => {
+  console.log("双击报警详情:", row);
+  // 可以在这里添加显示详细信息的逻辑
+  // ElMessage.info(`查看报警详情: ${row.stationName} - ${row.alarmType}`);
+  if (row.url) {
+    dialogVisible.value = true;
+    dialogUrl.value = row.url;
+    dialogTitle.value = `报警详情: ${row.stationName} - ${row.alarmType}`;
+  }
+};
+
+const clearAndRewrite = () => {
+  selectedConfirmOption.value = "";
+  ackInfo.value = "";
+  noVoiceToday.value = false;
+  ElMessage.info("已清除重写");
+};
+
+const confirmAlarm = async () => {
+  // if (!selectedConfirmOption.value) {
+  //   ElMessage.warning("请选择报警确认选项");
+  //   return;
+  // }
+
+  try {
+    // 调用原有的确认方法
+    await confirmAck();
+  } catch (error) {
+    console.error("报警确认失败:", error);
+    ElMessage.error("报警确认失败");
+  }
+};
+
+const saveConfirmOptions = () => {
+  // 保存确认选项的逻辑
+  const options = {
+    confirmOption: selectedConfirmOption.value,
+    notes: ackInfo.value,
+    noVoiceToday: noVoiceToday.value,
+  };
+
+  // 可以保存到 localStorage 或发送到服务器
+  localStorage.setItem("alarmConfirmOptions", JSON.stringify(options));
+  ElMessage.success("确认选项已保存");
+};
+
 // 根据告警类型设置行样式
 const getRowClassName = ({ row, rowIndex }) => {
-//   console.log("行数据:", row);
-//   console.log("alarmType值:", row.type);
-//   console.log("行索引:", rowIndex);
+  //   console.log("行数据:", row);
+  //   console.log("alarmType值:", row.type);
+  //   console.log("行索引:", rowIndex);
 
   // 测试：为前两行强制应用样式
   //   if (rowIndex === 0) {
@@ -949,60 +1141,69 @@ const batchConfirm = async () => {
 
     // 显示加载状态
     loading.value = true;
-    
+
     // 先立即从本地数据中移除已确认的报警，提供快速响应
     const confirmedItems = [...selectedRows.value];
-    const confirmedIds = new Set(confirmedItems.map(item => `${item.stationName}-${item.tag}-${item.time}`));
-    
+    const confirmedIds = new Set(
+      confirmedItems.map(
+        (item) => `${item.stationName}-${item.tag}-${item.time}`
+      )
+    );
+
     // 通知父组件移除已确认的报警
     emit("remove-confirmed-alarms", confirmedItems);
-    
+
     // 立即清空选择
     selectedRows.value = [];
-    
+
     // 显示即时反馈
     ElMessage.success(`正在确认 ${confirmedItems.length} 条报警信息...`);
-    
+
     // 创建所有确认请求的Promise数组（后台处理）
-    const confirmPromises = confirmedItems.map(item => 
-      props.requestAckAlarm(item.ip, {
-        tag: item.tag,
-        ackInfo: '',
-        type: item.type,
-        time: item.time,
-        port: item.port,
-      }).catch(error => {
-        console.error(`确认报警失败 - ${item.tag}:`, error);
-        return { success: false, error, item };
-      })
+    const confirmPromises = confirmedItems.map((item) =>
+      props
+        .requestAckAlarm(item.ip, {
+          tag: item.tag,
+          ackInfo: "",
+          type: item.type,
+          time: item.time,
+          port: item.port,
+        })
+        .catch((error) => {
+          console.error(`确认报警失败 - ${item.tag}:`, error);
+          return { success: false, error, item };
+        })
     );
 
     // 后台处理确认请求，不阻塞用户界面
-    Promise.allSettled(confirmPromises).then(results => {
-      // 统计成功和失败的数量
-      const successCount = results.filter(result => 
-        result.status === 'fulfilled' && !result.value?.error
-      ).length;
-      const failCount = results.length - successCount;
-      
-      // 显示最终结果
-      if (failCount === 0) {
-        ElMessage.success(`成功确认 ${successCount} 条报警信息`);
-      } else {
-        ElMessage.warning(`确认完成：成功 ${successCount} 条，失败 ${failCount} 条`);
-        // 如果有失败的，重新获取数据以确保数据一致性
+    Promise.allSettled(confirmPromises)
+      .then((results) => {
+        // 统计成功和失败的数量
+        const successCount = results.filter(
+          (result) => result.status === "fulfilled" && !result.value?.error
+        ).length;
+        const failCount = results.length - successCount;
+
+        // 显示最终结果
+        if (failCount === 0) {
+          ElMessage.success(`成功确认 ${successCount} 条报警信息`);
+        } else {
+          ElMessage.warning(
+            `确认完成：成功 ${successCount} 条，失败 ${failCount} 条`
+          );
+          // 如果有失败的，重新获取数据以确保数据一致性
+          emit("refresh-data");
+        }
+      })
+      .catch((error) => {
+        console.error("批量确认过程中发生错误:", error);
+        ElMessage.error("批量确认过程中发生错误");
+        // 发生错误时重新获取数据
         emit("refresh-data");
-      }
-    }).catch(error => {
-      console.error('批量确认过程中发生错误:', error);
-      ElMessage.error('批量确认过程中发生错误');
-      // 发生错误时重新获取数据
-      emit("refresh-data");
-    });
-    
+      });
+
     // 隐藏加载状态
     loading.value = false;
-    
   } catch {
     ElMessage.info("已取消确认");
   }
@@ -1025,13 +1226,13 @@ const closePage = () => {
 // 分页相关方法
 const handlePageChange = (page) => {
   currentPage.value = page;
-  console.log('切换到第', page, '页');
+  console.log("切换到第", page, "页");
 };
 
 const handlePageSizeChange = (size) => {
   pageSize.value = size;
   currentPage.value = 1; // 重置到第一页
-  console.log('每页显示', size, '条');
+  console.log("每页显示", size, "条");
 };
 
 // 重置分页到第一页
@@ -1040,19 +1241,23 @@ const resetPagination = () => {
 };
 
 // 监听筛选条件变化，重置分页
-watch(() => [
-  filters.workshop,
-  filters.station,
-  filters.device,
-  filters.alarmType,
-  filters.collection,
-  filters.isRecover,
-  filters.alarmLevel,
-  filters.keyword,
-  filters.dateRange
-], () => {
-  resetPagination();
-}, { deep: true });
+watch(
+  () => [
+    filters.workshop,
+    filters.station,
+    filters.device,
+    filters.alarmType,
+    filters.collection,
+    filters.isRecover,
+    filters.alarmLevel,
+    filters.keyword,
+    filters.dateRange,
+  ],
+  () => {
+    resetPagination();
+  },
+  { deep: true }
+);
 
 // 生命周期
 onMounted(() => {
@@ -1135,8 +1340,6 @@ defineExpose({
   align-items: flex-start;
   padding: 12px;
   background: #f8f9fa;
-  border-radius: 6px;
-  border-left: 4px solid #409eff;
   transition: all 0.3s ease;
 
   &:hover {
@@ -1327,7 +1530,7 @@ defineExpose({
     :deep(.el-pager li) {
       border-radius: 4px;
       margin: 0 2px;
-      
+
       &.is-active {
         background: #409eff;
         color: white;
@@ -1461,5 +1664,182 @@ defineExpose({
     border: none;
     display: block;
   }
+}
+
+// 报警确认对话框样式
+:deep(.alarm-confirm-dialog) {
+  .el-dialog__header {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 24px;
+    border-radius: 8px 8px 0 0;
+
+    .el-dialog__title {
+      color: white;
+      font-weight: 600;
+      font-size: 18px;
+    }
+  }
+
+  .el-dialog__body {
+    padding: 0;
+  }
+
+  .el-dialog__footer {
+    background: #f8f9fa;
+    padding: 16px 24px;
+    border-radius: 0 0 8px 8px;
+    border-top: 1px solid #e4e7ed;
+  }
+}
+
+.alarm-confirm-content {
+  padding: 24px;
+
+  .alarm-basic-info {
+    background: #f8f9fa;
+    padding: 0px;
+    border-radius: 8px;
+    margin-bottom: 20px;
+
+    .info-row {
+      display: flex;
+      gap: 24px;
+      flex-wrap: wrap;
+
+      .info-item {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+
+        .info-label {
+          font-weight: 600;
+          color: #000;
+          min-width: 80px;
+        }
+
+        .info-value {
+          color: #303133;
+          font-weight: 500;
+        }
+      }
+    }
+  }
+
+  .similar-alarms-section {
+    margin-bottom: 20px;
+
+    .section-title {
+      margin: 0 0 12px 0;
+      color: #303133;
+      font-size: 14px;
+      font-weight: 600;
+    }
+
+    :deep(.el-table) {
+      border-radius: 8px;
+      overflow: hidden;
+
+      .el-table__header {
+        background: #f5f7fa;
+      }
+
+      .el-table__row {
+        cursor: pointer;
+
+        &:hover {
+          background: #f0f2ff;
+        }
+      }
+    }
+  }
+
+  .confirm-options-section {
+    .confirm-option {
+      margin-bottom: 16px;
+
+      .option-label {
+        display: block;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 8px;
+      }
+    }
+
+    .confirm-notes {
+      margin-bottom: 16px;
+
+      .option-label {
+        display: block;
+        font-weight: 600;
+        color: #303133;
+        margin-bottom: 8px;
+      }
+
+      .notes-textarea {
+        :deep(.el-textarea__inner) {
+          border-radius: 6px;
+          resize: vertical;
+        }
+      }
+    }
+
+    .confirm-checkbox {
+      margin-bottom: 16px;
+
+      :deep(.el-checkbox__label) {
+        color: #606266;
+        font-weight: 500;
+      }
+    }
+
+    .preset-options {
+      margin-bottom: 16px;
+    }
+  }
+}
+
+.dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+
+  .el-button {
+    min-width: 100px;
+  }
+}
+
+/* 解决 el-select 下拉框在 dialog 中的 z-index 问题 */
+:deep(.select-popper-high-zindex) {
+  z-index: 9999 !important;
+}
+
+/* 全局覆盖 el-select 下拉框的 z-index */
+:deep(.el-select-dropdown) {
+  z-index: 9999 !important;
+}
+
+:deep(.el-popper) {
+  z-index: 9999 !important;
+}
+
+/* 确保在 dialog 中的 select 下拉框显示正确 */
+:deep(.el-dialog .el-select-dropdown) {
+  z-index: 9999 !important;
+}
+
+/* 强制设置所有 popper 元素的 z-index */
+:deep(.el-popper.is-pure) {
+  z-index: 9999 !important;
+}
+
+/* 针对 Element Plus 2.x 的新类名 */
+:deep(.el-select__popper) {
+  z-index: 9999 !important;
+}
+
+/* 全局强制覆盖 */
+:deep([class*="el-select-dropdown"]) {
+  z-index: 9999 !important;
 }
 </style>
