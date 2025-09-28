@@ -18,18 +18,31 @@
           :min="0"
           :step="10"
           placeholder="输入阈值"
+          style="width: 140px;"
           @change="handleThresholdChange"
         />
-        <span class="unit">N</span>
+        <span class="unit">N为蠕变机位</span>
       </div>
-      <el-button 
-        type="primary" 
-        :icon="Download" 
-        @click="exportToExcel"
-        :disabled="tableData.length === 0"
-      >
-        导出Excel
-      </el-button>
+        <!-- 统计结果 -->
+        <div class="statistics-info" v-if="tableData.length > 0">
+          <span class="stat-item">
+            共 <strong>{{ totalMachines }}</strong> 个机位
+          </span>
+          <span class="stat-item">
+            蠕变 <strong class="exceed-count">{{ exceedMachines }}</strong> 个机位
+          </span>
+          <span class="stat-item">
+            蠕变率 <strong class="exceed-percentage">{{ exceedPercentage }}%</strong>
+          </span>
+        </div>
+        <el-button 
+          type="primary" 
+          :icon="Download" 
+          @click="exportToExcel"
+          :disabled="tableData.length === 0"
+        >
+          导出Excel
+        </el-button>
     </div>
 
     <!-- 数据表格 -->
@@ -39,6 +52,7 @@
       stripe
       v-loading="loading"
       style="width: 100%"
+      height="80vh"
       empty-text="暂无数据"
       :span-method="spanMethod"
     >
@@ -94,10 +108,26 @@ const stationStore = useStationStore();
 const loading = ref(false);
 const selectedMonth = ref(dayjs().format('YYYY-MM'));
 const tableData = ref([]);
-const originalThreshold = ref(1000); // 原始值阈值，默认1000N
+const originalThreshold = ref(10000); // 原始值阈值，默认1000N
 
 // 获取所有站点
 const allStations = computed(() => stationStore.getAllStations);
+
+// 统计信息计算属性
+const totalMachines = computed(() => tableData.value.length);
+
+const exceedMachines = computed(() => {
+  return tableData.value.filter(row => {
+    const startExceed = isExceedThreshold(row.startOriginal);
+    const endExceed = isExceedThreshold(row.endOriginal);
+    return startExceed || endExceed;
+  }).length;
+});
+
+const exceedPercentage = computed(() => {
+  if (totalMachines.value === 0) return 0;
+  return ((exceedMachines.value / totalMachines.value) * 100).toFixed(1);
+});
 
 // 处理月份变化
 const handleMonthChange = () => {
@@ -376,6 +406,33 @@ onMounted(() => {
   
   .el-button {
     margin-left: 20px;
+  }
+}
+
+.statistics-info {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  margin-left: 20px;
+  
+  .stat-item {
+    font-size: 14px;
+    color: #495057;
+    
+    strong {
+      color: #212529;
+      font-weight: 600;
+    }
+    
+    .exceed-count {
+      color: #dc3545;
+      font-weight: 700;
+    }
+    
+    .exceed-percentage {
+      color: #dc3545;
+      font-weight: 700;
+    }
   }
 }
 
