@@ -41,6 +41,7 @@ export const requestDBDayList = (ip, { tag, time }) => {
   });
 }
 
+// 获取数据库数据
 // 请求参数：
 // {
 //   "jsonrpc": "2.0",
@@ -76,6 +77,40 @@ export const requestDBData = (ip, { tag, time }) => {
         tag,
         time,
         'd-sort': 'time',
+      },
+    },
+  });
+}
+
+// 获取最新一条数据
+// {
+//   "method": "db.select",
+//   "id": "1",
+//   "params": {
+//       "tag":"D2701#.D2701J1.转换阻力",
+//       "time": "2024-03-28",
+//       "aggr": "last"
+//   }
+// }
+// 返回：
+// [
+//   {
+//      "time": "16:44:32",
+//      "tag": "D2701#.D2701J1.转换阻力"
+//   }
+// ]
+export const requestLastDataInfo = (ip, { tag, time }) => {
+  const customRequest = createService(ip);
+  return customRequest({
+    url: `/rpc`,
+    method: "post",
+    data: {
+      "jsonrpc": "2.0",
+      "method": "db.select",
+      "params": {
+        tag,
+        time,
+        aggr: 'last',
       },
     },
   });
