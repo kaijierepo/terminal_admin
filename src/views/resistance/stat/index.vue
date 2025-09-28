@@ -22,6 +22,14 @@
         />
         <span class="unit">N</span>
       </div>
+      <el-button 
+        type="primary" 
+        :icon="Download" 
+        @click="exportToExcel"
+        :disabled="tableData.length === 0"
+      >
+        导出Excel
+      </el-button>
     </div>
 
     <!-- 数据表格 -->
@@ -72,11 +80,13 @@
 <script setup>
 import { ref, onMounted, computed } from 'vue';
 import { ElMessage } from 'element-plus';
+import { Download } from '@element-plus/icons-vue';
 import { useStationStore } from '@/store/modules/station';
 import { requestDBData } from '@/api/db';
 import { requestResistanceDetail } from '@/api/resistance';
 import { requestGapZzjList } from '@/api/mo';
 import dayjs from 'dayjs';
+import * as XLSX from 'xlsx';
 
 const stationStore = useStationStore();
 
@@ -175,8 +185,6 @@ const loadData = async () => {
               time: selectedMonth.value
             });
             
-            console.log(station.stationName, zzj.name, dbResponse.result[0])
-
             if (!dbResponse?.result?.length) {
               results.push({
                 stationName: station.stationName,
@@ -192,7 +200,6 @@ const loadData = async () => {
 
             // 4. 获取最新的数据信息
             const { time, move_direct } = dbResponse.result[0];
-            console.log(time, move_direct)
             if (!time) continue;
 
             try {
@@ -202,7 +209,6 @@ const loadData = async () => {
                 move_direct: parseInt(move_direct),
                 time_range: time
               });
-              console.log(1111, resistanceResponse)
               if (resistanceResponse?.data?.curve_data) {
                 const curveData = resistanceResponse.data.curve_data;
                 
@@ -223,10 +229,10 @@ const loadData = async () => {
                   results.push({
                     stationName: station.stationName,
                     switchName: zzj.name,
-                    startResistance: startResistance.toFixed(1) || '-',
-                    endResistance: endResistance.toFixed(1) || '-',
-                    startOriginal: startOriginal.toFixed(1) || '-',
-                    endOriginal: endOriginal.toFixed(1) || '-',
+                    startResistance: startResistance.toFixed(0) || '-',
+                    endResistance: endResistance.toFixed(0) || '-',
+                    startOriginal: startOriginal.toFixed(0) || '-',
+                    endOriginal: endOriginal.toFixed(0) || '-',
                     time: time || '-'
                   });
                 }
@@ -263,6 +269,64 @@ const loadData = async () => {
     ElMessage.error('加载数据失败');
   } finally {
     loading.value = false;
+  }
+};
+
+// 导出Excel功能
+const exportToExcel = () => {
+  if (tableData.value.length === 0) {
+    ElMessage.warning('暂无数据可导出');
+    return;
+  }
+
+  try {
+    // 创建工作簿
+    const wb = XLSX.utils.book_new();
+    
+    // 准备数据
+    const exportData = tableData.value.map((row, index) => {
+      return {
+        '序号': index + 1,
+        '站点': row.stationName,
+        '转辙机': row.switchName,
+        '开始静态保持力': row.startResistance,
+        '开始原始值': row.startOriginal,
+        '结束静态保持力': row.endResistance,
+        '结束原始值': row.endOriginal,
+        '时间': row.time,
+      };
+    });
+
+    // 创建工作表
+    const ws = XLSX.utils.json_to_sheet(exportData);
+    
+    // 设置列宽
+    const colWidths = [
+      { wch: 8 },   // 序号
+      { wch: 15 },  // 站点
+      { wch: 15 },  // 转辙机
+      { wch: 18 },  // 开始静态保持力
+      { wch: 18 },  // 开始原始值
+      { wch: 18 },  // 结束静态保持力
+      { wch: 18 },  // 结束原始值
+      { wch: 20 },  // 时间
+    ];
+    ws['!cols'] = colWidths;
+
+
+    // 添加工作表到工作簿
+    XLSX.utils.book_append_sheet(wb, ws, '静态保持力统计');
+
+    // 生成文件名
+    const fileName = `静态保持力统计_${selectedMonth.value}_${dayjs().format('YYYY-MM-DD_HH-mm-ss')}.xlsx`;
+    
+    // 导出文件
+    XLSX.writeFile(wb, fileName);
+    
+    ElMessage.success(`Excel文件已导出：${fileName}`);
+  } catch (error) {
+    console.error('导出Excel失败:', error);
+    ElMessage.error('导出Excel失败');
   }
 };
 
@@ -308,6 +372,10 @@ onMounted(() => {
       font-size: 14px;
       color: #909399;
     }
+  }
+  
+  .el-button {
+    margin-left: 20px;
   }
 }
 
