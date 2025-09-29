@@ -59,7 +59,7 @@ const addConnectionLog = (action, detail) => {
     time,
     action,
     detail,
-    timestamp: now.toISOString(),
+    timestamp: now.toLocaleString(),
   });
 
   // 限制日志数量
@@ -119,7 +119,7 @@ const getConnectionStatusColor = () => {
     <iframe
       :src="
         currentStation
-          ? `http://${currentStation.ip}:${currentStation.httpport}/#/`
+          ? `http://${currentStation.ip}:${currentStation.port}/#/`
           : ''
       "
       frameborder="0"

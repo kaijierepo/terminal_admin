@@ -415,7 +415,7 @@
         <div class="dialog-footer">
           <!-- <el-button @click="clearAndRewrite">清除重写(B)</el-button> -->
           <el-button type="primary" @click="confirmAlarm"
-            >报警确认(Q)</el-button
+            >报警确认</el-button
           >
           <!-- <el-button type="success" @click="saveConfirmOptions"
             >保存确认选项</el-button
@@ -569,6 +569,8 @@ const handleRowClick = async (row) => {
 
   similarAlarms.value = [...remoteSimilarAlarms, row];
   ackRow.value = row;
+  ackInfo.value = "";
+  selectedConfirmOption.value = "";
   ackDialogVisible.value = true;
 };
 
@@ -982,14 +984,23 @@ const handleSelectionChange = (selection) => {
 // 报警确认方法
 const handleAckAlarm = async (row, requestAckAlarm) => {
   console.log("row==============", row);
+  const stationName = row.stationName;
   const res = await getSimilarAlarms(row.ip, row.uuid);
   let remoteSimilarAlarms = [];
   if(res.result && res.result.length > 0) {
-    remoteSimilarAlarms = res.result;
+    remoteSimilarAlarms = res.result.map(item => ({
+      ...item,
+      stationName,
+    }));
   } 
 
-  similarAlarms.value = [...remoteSimilarAlarms, row];
+  similarAlarms.value = [...remoteSimilarAlarms, row].map((_, index) => ({
+    ..._,
+    number: index + 1,
+  }));
   ackRow.value = row;
+  ackInfo.value = "";
+  selectedConfirmOption.value = "";
   ackDialogVisible.value = true;
 };
 

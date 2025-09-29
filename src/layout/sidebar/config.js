@@ -49,8 +49,7 @@ const digTree = stationList.reduce((acc, item) => {
     name: station,
     id: `station_${station}_${ip}`,
     ip: ip,
-    port: port,
-    httpport: 81,
+    port: port || 81,
   };
   workshopNode.children.push(stationNode);
 

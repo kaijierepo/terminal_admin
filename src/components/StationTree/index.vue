@@ -132,7 +132,7 @@
                         </div>
                         <div class="node-meta">
                           <span class="station-ip">{{ station.ip }}</span>
-                          <!--<span class="station-port">:{{ station.httpport }}</span>
+                          <!--<span class="station-port">:{{ station.port }}</span>
                           <span 
                             class="station-status" 
                             :class="getStationStatusClass(station)"
@@ -191,8 +191,8 @@
         <el-input v-model="formData.ip" placeholder="请输入IP地址" />
       </el-form-item>
       
-      <el-form-item v-if="formData.type === 'station'" label="端口" prop="httpport">
-        <el-input-number v-model="formData.httpport" :min="1" :max="65535" placeholder="端口号" />
+      <el-form-item v-if="formData.type === 'station'" label="端口" prop="port">
+        <el-input-number v-model="formData.port" :min="1" :max="65535" placeholder="端口号" />
       </el-form-item>
     </el-form>
     
@@ -256,7 +256,7 @@ const formRef = ref()
 const formData = ref({
   name: '',
   ip: '',
-  httpport: 81,
+  port: 81,
   type: '', // line, workshop, station
   parentNode: null, // 父节点引用
   editingNode: null // 编辑的节点引用
@@ -276,7 +276,7 @@ const formRules = {
       trigger: 'blur' 
     }
   ],
-  httpport: [
+  port: [
     { required: true, message: '请输入端口号', trigger: 'blur' },
     { type: 'number', min: 1, max: 65535, message: '端口号范围为 1-65535', trigger: 'blur' }
   ]
@@ -477,7 +477,7 @@ const openDialog = (title, type, parentNode = null) => {
   formData.value = {
     name: '',
     ip: '',
-    httpport: 81,
+    port: 81,
     type: type,
     parentNode: parentNode,
     editingNode: null
@@ -491,7 +491,7 @@ const openEditDialog = (node) => {
   formData.value = {
     name: node.name,
     ip: node.ip || '',
-    httpport: node.httpport || 81,
+    port: node.port || 81,
     type: getNodeType(node),
     parentNode: null,
     editingNode: node
@@ -562,7 +562,7 @@ const handleSubmit = async () => {
       formData.value.editingNode.name = formData.value.name
       if (formData.value.type === 'station') {
         formData.value.editingNode.ip = formData.value.ip
-        formData.value.editingNode.httpport = formData.value.httpport
+        formData.value.editingNode.port = formData.value.port
       }
       ElMessage.success(`编辑${getNodeTypeText(formData.value.editingNode)}成功`)
     } else {
@@ -604,7 +604,7 @@ const createNewNode = (formData) => {
     return {
       ...baseNode,
       ip: formData.ip,
-      httpport: formData.httpport
+      port: formData.port
     }
   } else {
     return {
@@ -636,7 +636,7 @@ const handleExportData = () => {
         // 添加站点特有属性
         if (node.ip) {
           cleaned.ip = node.ip
-          cleaned.httpport = node.httpport
+          cleaned.port = node.port
         }
         
         // 递归处理子节点
@@ -744,7 +744,7 @@ const validateImportData = (data) => {
     if (!node.id || !node.name) return false
     
     // 如果是站点，检查必要属性
-    if (node.ip && (!node.httpport || typeof node.httpport !== 'number')) return false
+    if (node.ip && (!node.port || typeof node.port !== 'number')) return false
     
     // 递归验证子节点
     if (node.children && Array.isArray(node.children)) {

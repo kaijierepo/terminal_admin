@@ -690,7 +690,7 @@ const getAllStationIps = computed(() => {
             if (station.ip) {
               ips.push({
                 ip: station.ip,
-                port: station.port || station.httpport,
+                port: station.port || 81,
                 name: station.name,
               });
             }
@@ -736,7 +736,7 @@ const handleStationConnect = (station) => {
   // 构建连接信息
   const connectInfo = {
     station: station,
-    url: `http://${station.ip}:${station.httpport}`,
+    url: `http://${station.ip}:${station.port}`,
     timestamp: new Date().toISOString(),
     action: "connect",
   };
