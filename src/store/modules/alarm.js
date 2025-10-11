@@ -15,6 +15,8 @@ export const useAlarmStore = defineStore("alarm", {
     playInterval: 5000, // 5秒间隔
     // 播放定时器
     playTimer: null,
+    // 当前播放队列的取消函数
+    cancelCurrentQueue: null,
   }),
 
   getters: {
@@ -135,13 +137,27 @@ export const useAlarmStore = defineStore("alarm", {
         return;
       }
 
+      // 检查是否正在播放，避免重复播放
+      if (window.speechAPI && window.speechAPI.isPlaying()) {
+        console.log("语音正在播放中，跳过本次播报");
+        return;
+      }
+
+      // 如果有正在播放的队列，先取消
+      if (this.cancelCurrentQueue) {
+        console.log("取消之前的播放队列");
+        this.cancelCurrentQueue();
+        this.cancelCurrentQueue = null;
+      }
+
       const voiceTexts = this.getVoiceAlarmTexts();
       if (voiceTexts.length > 0) {
-        // console.log("开始播放报警语音:", voiceTexts);
+        console.log("开始播放报警语音，共", voiceTexts.length, "条");
 
         // 使用全局语音API播放
         if (window.speechAPI) {
-          window.speechAPI.playQueue(voiceTexts);
+          // 保存取消函数
+          this.cancelCurrentQueue = window.speechAPI.playQueue(voiceTexts);
         } else {
           console.warn("语音API未加载");
         }
@@ -186,6 +202,14 @@ export const useAlarmStore = defineStore("alarm", {
         clearInterval(this.playTimer);
         this.playTimer = null;
       }
+      
+      // 取消当前播放队列
+      if (this.cancelCurrentQueue) {
+        console.log("停止当前播放队列");
+        this.cancelCurrentQueue();
+        this.cancelCurrentQueue = null;
+      }
+      
       this.isLoopPlaying = false;
       console.log("停止循环播放报警语音");
     },

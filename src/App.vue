@@ -62,6 +62,7 @@ const playSpeech = (text: string) => {
   }
   
   currentText.value = text
+  console.log('currentText', currentText.value)
   const utterance = createUtterance(text)
   speechSynthesis.speak(utterance)
 }
@@ -156,32 +157,135 @@ const speechAPI = {
   
   // 批量播放
   playQueue: (texts: string[]) => {
+    if (!texts || texts.length === 0) {
+      console.warn('播放队列为空')
+      return
+    }
+    
+    // 使用闭包变量来跟踪当前队列
+    const queueId = Date.now()
     let currentIndex = 0
-    let timeoutId = null
+    let isQueueCancelled = false
+    
+    console.log(`\n🆕 创建新播放队列 #${queueId}，共 ${texts.length} 条`)
     
     const playNext = () => {
-      if (currentIndex < texts.length) {
-        playSpeech(texts[currentIndex])
+      // 检查队列是否已取消
+      if (isQueueCancelled) {
+        console.log(`❌ 队列 #${queueId} 已取消`)
+        return
+      }
+      
+      // 检查索引是否越界
+      if (currentIndex >= texts.length) {
+        console.log(`🎉 队列 #${queueId} 播放完成`)
+        isPlaying.value = false
+        currentUtterance = null
+        return
+      }
+      
+      const text = texts[currentIndex]
+      const index = currentIndex
+      const startTime = new Date().toLocaleTimeString()
+      console.log(`\n🎵 [队列#${queueId}] 准备播放 [${index + 1}/${texts.length}] - ${startTime}`)
+      console.log(`   内容: ${text}`)
+      console.log(`   长度: ${text.length} 字符`)
+      
+      // 创建新的 utterance
+      currentText.value = text
+      const utterance = new SpeechSynthesisUtterance(text)
+      utterance.rate = speechConfig.rate
+      utterance.pitch = speechConfig.pitch
+      utterance.volume = isMuted.value ? 0 : speechConfig.volume
+      utterance.lang = speechConfig.lang
+      
+      currentUtterance = utterance
+      
+      // 播放开始事件
+      utterance.onstart = () => {
+        if (isQueueCancelled) return
+        isPlaying.value = true
+        const actualStartTime = new Date().toLocaleTimeString()
+        console.log(`▶️  [队列#${queueId}] 开始播放 [${index + 1}/${texts.length}] - ${actualStartTime}`)
+      }
+      
+      // 播放结束事件
+      utterance.onend = () => {
+        if (isQueueCancelled) return
+        
+        isPlaying.value = false
+        const endTime = new Date().toLocaleTimeString()
+        console.log(`✅ [队列#${queueId}] 播放完成 [${index + 1}/${texts.length}] - ${endTime}`)
+        
+        // 移动到下一个
         currentIndex++
         
-        // 监听播放结束，播放下一个
-        if (currentUtterance) {
-          currentUtterance.onend = () => {
-            isPlaying.value = false
-            // 使用 timeoutId 来管理定时器，避免内存泄漏
-            timeoutId = setTimeout(playNext, 500) // 间隔500ms播放下一个
-          }
+        // 延迟后播放下一个
+        if (currentIndex < texts.length) {
+          console.log(`⏳ [队列#${queueId}] 等待后播放下一条...`)
+          // 使用较短的延迟，因为 onend 已经在播放完成后触发了
+          setTimeout(() => {
+            if (!isQueueCancelled) {
+              playNext()
+            }
+          }, 500)
+        } else {
+          console.log(`🎉 [队列#${queueId}] 所有播放完成`)
+          currentUtterance = null
         }
-      } else {
-        // 播放完成，清理定时器
-        if (timeoutId) {
-          clearTimeout(timeoutId)
-          timeoutId = null
+      }
+      
+      // 播放错误事件
+      utterance.onerror = (event) => {
+        if (isQueueCancelled) return
+        
+        isPlaying.value = false
+        console.error(`❌ [队列#${queueId}] 播放错误 [${index + 1}/${texts.length}]:`, event.error)
+        
+        // 出错时移动到下一个
+        currentIndex++
+        
+        if (currentIndex < texts.length) {
+          setTimeout(() => {
+            if (!isQueueCancelled) {
+              playNext()
+            }
+          }, 300)
+        } else {
+          currentUtterance = null
+        }
+      }
+      
+      // 开始播放
+      try {
+        // 先取消之前所有的播放
+        speechSynthesis.cancel()
+        // 等待一小段时间确保取消完成
+        setTimeout(() => {
+          if (!isQueueCancelled) {
+            speechSynthesis.speak(utterance)
+          }
+        }, 100)
+      } catch (error) {
+        console.error(`❌ [队列#${queueId}] 播放失败:`, error)
+        currentIndex++
+        if (currentIndex < texts.length) {
+          setTimeout(() => playNext(), 300)
         }
       }
     }
     
+    // 开始播放队列
     playNext()
+    
+    // 返回一个取消函数
+    return () => {
+      console.log(`🛑 取消队列 #${queueId}`)
+      isQueueCancelled = true
+      speechSynthesis.cancel()
+      isPlaying.value = false
+      currentUtterance = null
+    }
   }
 }
 
