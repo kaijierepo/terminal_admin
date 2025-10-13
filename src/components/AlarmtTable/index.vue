@@ -183,13 +183,13 @@
           show-overflow-tooltip
         />
 
-        <el-table-column
+        <!-- <el-table-column
           prop="temperature"
           label="温度/24h最小/最大"
           width="180"
           align="center"
         >
-        </el-table-column>
+        </el-table-column> -->
 
         <!-- <el-table-column prop="time" label="报警时间" width="160" /> -->
 
@@ -443,6 +443,7 @@
       :title="dialogTitle"
       width="90vw"
       height="600px"
+      append-to-body
       :close-on-click-modal="false"
       :close-on-press-escape="true"
       :before-close="closeDialog"
@@ -607,7 +608,7 @@ const stationOptions = computed(() => {
             workshop.children.forEach((station) => {
               stations.push({
                 label: `${station.name}`,
-                value: station.id,
+                value: station.name,
                 station: station,
               });
             });
@@ -626,7 +627,7 @@ const stationOptions = computed(() => {
               workshop.children.forEach((station) => {
                 stations.push({
                   label: `${station.name}`,
-                  value: station.id,
+                  value: station.name,
                   station: station,
                 });
               });
@@ -876,11 +877,24 @@ const filteredAlarmData = computed(() => {
   };
 
   const isKeyword = (item) => {
-    const keywords = filters.keyword.split(",");
+    // 如果没有关键词，不进行过滤
+    if (!filters.keyword || filters.keyword.trim() === "") {
+      return true;
+    }
+    
+    // 按空格分割关键词，并过滤掉空字符串
+    const keywords = filters.keyword.split(/\s+/).filter(k => k.trim() !== "");
+    
+    // 如果分割后没有有效关键词，不进行过滤
+    if (keywords.length === 0) {
+      return true;
+    }
+    
+    // 检查是否至少有一个关键词匹配
     return keywords.some(
       (keyword) =>
         item.type.includes(keyword) ||
-        item.desc.includes(keyword) ||
+        (item.detail && item.detail.includes(keyword)) ||
         item.tag.includes(keyword)
     );
   };
@@ -978,7 +992,7 @@ const alarmData = computed(() => {
 const alarmCount = computed(() => filteredAlarmData.value.length);
 const warningCount = computed(
   () =>
-    filteredAlarmData.value.filter((item) => item.type.includes("预警")).length
+    filteredAlarmData.value.filter((item) => item.type.includes("预警") || item.level === "warn").length
 );
 
 // 获取带消音标记的报警类型显示
@@ -1014,12 +1028,18 @@ const handleAckAlarm = async (row, requestAckAlarm) => {
     }));
   } 
 
-  similarAlarms.value = [row, ...remoteSimilarAlarms]
-    .filter((item, index, self) => 
-      self.findIndex(t => t.uuid === item.uuid) === index
-    )
-    .map((_, index) => ({
-      ..._,
+  // 使用 Map 按 uuid 去重，保持第一次出现的项
+  const uniqueMap = new Map();
+  [row, ...remoteSimilarAlarms].forEach(item => {
+    if (item.uuid && !uniqueMap.has(item.uuid)) {
+      uniqueMap.set(item.uuid, item);
+    }
+  });
+  
+  // 转换为数组并添加编号
+  similarAlarms.value = Array.from(uniqueMap.values())
+    .map((item, index) => ({
+      ...item,
       number: index + 1,
     }));
   ackRow.value = row;
@@ -1079,7 +1099,7 @@ const handleAlarmDetail = (row) => {
   if (row.url) {
     dialogVisible.value = true;
     dialogUrl.value = row.url;
-    dialogTitle.value = `报警详情: ${row.stationName} - ${row.alarmType}`;
+    dialogTitle.value = `报警详情: ${row.stationName} - ${row.alarmType || row.type}`;
   }
 };
 
