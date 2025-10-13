@@ -31,7 +31,16 @@ export const requestSimialrAlarm = (
 
 export const requestAckAlarm = (
   ip,
-  options = { type, tag, ackInfo, time, port: 81, timeout: 10000, name: "" }
+  options = {
+    type,
+    tag,
+    ackInfo,
+    time,
+    uuid,
+    port: 81,
+    timeout: 10000,
+    name: "",
+  }
 ) => {
   return axios
     .post(
@@ -44,6 +53,7 @@ export const requestAckAlarm = (
           ackInfo: options.ackInfo,
           time: options.time,
           type: options.type,
+          uuid: options.uuid,
         },
       },
       {

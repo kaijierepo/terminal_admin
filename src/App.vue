@@ -7,6 +7,7 @@ const isMuted = ref(false)
 const currentText = ref('')
 const speechSynthesis = window.speechSynthesis
 let currentUtterance: SpeechSynthesisUtterance | null = null
+let currentQueueCancelFn: (() => void) | null = null // 当前队列的取消函数
 
 // 语音合成配置
 const speechConfig = {
@@ -18,35 +19,40 @@ const speechConfig = {
 
 // 创建语音合成实例
 const createUtterance = (text: string) => {
-  if (currentUtterance) {
-    speechSynthesis.cancel()
-  }
+  // 不在这里调用 cancel，由调用方控制
+  // 避免重复触发 interrupted 错误
   
-  currentUtterance = new SpeechSynthesisUtterance(text)
-  currentUtterance.rate = speechConfig.rate
-  currentUtterance.pitch = speechConfig.pitch
-  currentUtterance.volume = isMuted.value ? 0 : speechConfig.volume
-  currentUtterance.lang = speechConfig.lang
+  const utterance = new SpeechSynthesisUtterance(text)
+  utterance.rate = speechConfig.rate
+  utterance.pitch = speechConfig.pitch
+  utterance.volume = isMuted.value ? 0 : speechConfig.volume
+  utterance.lang = speechConfig.lang
   
   // 播放开始事件
-  currentUtterance.onstart = () => {
+  utterance.onstart = () => {
     isPlaying.value = true
-    console.log('语音播放开始')
+    console.log('✅ 语音播放开始')
   }
   
   // 播放结束事件
-  currentUtterance.onend = () => {
+  utterance.onend = () => {
     isPlaying.value = false
-    console.log('语音播放结束')
+    console.log('✅ 语音播放结束')
   }
   
   // 播放错误事件
-  currentUtterance.onerror = (event) => {
+  utterance.onerror = (event) => {
     isPlaying.value = false
-    console.error('语音播放错误:', event.error)
+    // interrupted 是正常的取消操作，不需要报错
+    if (event.error === 'interrupted') {
+      console.log('⚠️  语音播放被中断（正常操作）')
+    } else {
+      console.error('❌ 语音播放错误:', event.error)
+    }
   }
   
-  return currentUtterance
+  currentUtterance = utterance
+  return utterance
 }
 
 // 播放语音
@@ -56,19 +62,35 @@ const playSpeech = (text: string) => {
     return
   }
   
-  // 如果当前有播放，先停止
-  if (isPlaying.value) {
-    stopSpeech()
+  console.log('🔊 播放单条语音:', text)
+  
+  // 如果有正在播放的队列，先取消
+  if (currentQueueCancelFn) {
+    console.log('   取消当前播放队列')
+    currentQueueCancelFn()
+    currentQueueCancelFn = null
   }
   
+  // 停止当前所有播放（会调用 cancel，触发 interrupted）
+  speechSynthesis.cancel()
+  
   currentText.value = text
-  console.log('currentText', currentText.value)
   const utterance = createUtterance(text)
-  speechSynthesis.speak(utterance)
+  
+  // 等待一小段时间确保之前的取消完成
+  setTimeout(() => {
+    speechSynthesis.speak(utterance)
+  }, 50)
 }
 
 // 停止语音
 const stopSpeech = () => {
+  // 取消队列
+  if (currentQueueCancelFn) {
+    currentQueueCancelFn()
+    currentQueueCancelFn = null
+  }
+  
   speechSynthesis.cancel()
   isPlaying.value = false
   currentUtterance = null
@@ -240,9 +262,18 @@ const speechAPI = {
         if (isQueueCancelled) return
         
         isPlaying.value = false
+        
+        // interrupted 错误通常是因为新的播放打断了旧的，这是正常的取消操作
+        if (event.error === 'interrupted') {
+          console.warn(`⚠️  [队列#${queueId}] 播放被中断 [${index + 1}/${texts.length}]`)
+          // interrupted 错误不继续播放下一个
+          currentUtterance = null
+          return
+        }
+        
         console.error(`❌ [队列#${queueId}] 播放错误 [${index + 1}/${texts.length}]:`, event.error)
         
-        // 出错时移动到下一个
+        // 其他错误时移动到下一个
         currentIndex++
         
         if (currentIndex < texts.length) {
@@ -275,17 +306,27 @@ const speechAPI = {
       }
     }
     
-    // 开始播放队列
-    playNext()
-    
-    // 返回一个取消函数
-    return () => {
+    // 创建取消函数
+    const cancelFn = () => {
       console.log(`🛑 取消队列 #${queueId}`)
       isQueueCancelled = true
       speechSynthesis.cancel()
       isPlaying.value = false
       currentUtterance = null
+      // 清除全局引用
+      if (currentQueueCancelFn === cancelFn) {
+        currentQueueCancelFn = null
+      }
     }
+    
+    // 保存到全局变量
+    currentQueueCancelFn = cancelFn
+    
+    // 开始播放队列
+    playNext()
+    
+    // 返回取消函数
+    return cancelFn
   }
 }
 
