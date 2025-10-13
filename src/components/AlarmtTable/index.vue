@@ -252,8 +252,9 @@
     <div class="footer-section">
       <div class="status-info">
         <span
-          >告警条数{{ alarmCount - warningCount }}条,预警条数{{ warningCount }}条
-          (当前页显示{{ alarmData.length }}条)</span
+          >告警条数{{ alarmCount - warningCount }}条,预警条数{{
+            warningCount
+          }}条 (当前页显示{{ alarmData.length }}条)</span
         >
         <!--  <span v-if="renderTime > 0" class="performance-info">
           渲染耗时: {{ renderTime.toFixed(2) }}ms
@@ -342,11 +343,11 @@
             <el-table-column prop="acqtype" label="采集方式" width="100" />
             <el-table-column prop="objstatus" label="定反位" width="80" />
             <el-table-column prop="detail" label="报警描述" width="150" />
-            <el-table-column
+            <!-- <el-table-column
               prop="temperature"
               label="温度/24h最..."
               width="120"
-            />
+            /> -->
             <el-table-column prop="time" label="报警时间" width="140" />
             <el-table-column label="恢复状态" width="80">
               <template #default="{ row }">
@@ -371,7 +372,6 @@
               v-model="selectedConfirmOption"
               placeholder="请选择确认选项"
               style="width: 200px"
-              clearable
               popper-class="select-popper-high-zindex"
               teleported
               append-to-body
@@ -416,8 +416,8 @@
       <template #footer>
         <div class="dialog-footer">
           <!-- <el-button @click="clearAndRewrite">清除重写(B)</el-button> -->
-          <el-button 
-            type="primary" 
+          <el-button
+            type="primary"
             @click="confirmAlarm"
             :loading="isConfirmLoading"
             :disabled="isConfirmLoading"
@@ -427,7 +427,7 @@
           <!-- <el-button type="success" @click="saveConfirmOptions"
             >保存确认选项</el-button
           > -->
-          <el-button 
+          <el-button
             @click="ackDialogVisible = false"
             :disabled="isConfirmLoading"
           >
@@ -547,22 +547,24 @@ const ackInfo = ref("");
 const isConfirmLoading = ref(false); // 报警确认按钮的 loading 状态
 
 // 报警确认对话框新增数据
-const selectedConfirmOption = ref("");
+const selectedConfirmOption = ref(0);
 const noVoiceToday = ref(false);
 const confirmOptions = ref([
-  { label: "作业影响", value: "作业影响" },
-  { label: "预偏", value: "预偏" },
-  { label: "监测设备不良", value: "监测设备不良" },
-  { label: "盲买缺口变动,具体处理情况见备注", value: "盲买缺口变动,具体处理情况见备注" },
-  { label: "油箱漏油", value: "油箱漏油" },
-  { label: "天窗内报警", value: "天窗内报警" },
-  { label: "其他,具体情况见备注", value: "其他,具体情况见备注" },
+  { label: "作业影响", value: 0 },
+  { label: "预调偏", value: 1 },
+  { label: "监测设备不良", value: 2 },
+  {
+    label: "真实缺口变动,具体处理情况见备注",
+    value: 3,
+  },
+  { label: "油箱漏油", value: 4 },
+  { label: "天窗内报警", value: 5 },
+  { label: "其他,具体情况见备注", value: 6 },
 ]);
 const similarAlarms = ref([]);
 
-
 const handleConfirmOptionChange = (value) => {
-  ackInfo.value =  value || "";
+  // ackInfo.value = value || "";
 };
 
 const getSimilarAlarms = async (ip, uuid) => {
@@ -580,7 +582,7 @@ const handleRowClick = async (row) => {
   // let remoteSimilarAlarms = [];
   // if(res.result && res.result.length > 0) {
   //   remoteSimilarAlarms = res.result;
-  // } 
+  // }
 
   // similarAlarms.value = [...remoteSimilarAlarms, row];
   // ackRow.value = row;
@@ -675,10 +677,12 @@ const deviceOptions = computed(() => {
 
     // 为每个唯一的设备组合创建选项
     uniqueDevices.forEach((device) => {
-      options.push({
-        label: device.label,
-        value: device.value,
-      });
+      if (options.find((item) => item.label === device.label) === undefined) {
+        options.push({
+          label: device.label,
+          value: device.value,
+        });
+      }
     });
   }
 
@@ -782,10 +786,12 @@ const filteredAlarmData = computed(() => {
     // 如果选择了具体站点，直接匹配
     if (filters.station) {
       const regex = /_([^_]+)_/; // 匹配两个下划线之间的内容（不包含下划线本身）
-      const isMatch = filters.station.match(regex); 
+      const isMatch = filters.station.match(regex);
       console.log("isMatch=============", isMatch);
 
-      const match = isMatch && isMatch[1] === item.stationName || item.stationName === station;
+      const match =
+        (isMatch && isMatch[1] === item.stationName) ||
+        item.stationName === station;
       console.log(`站点筛选: ${item.stationName} === ${station} = ${match}`);
       return match;
     }
@@ -881,15 +887,17 @@ const filteredAlarmData = computed(() => {
     if (!filters.keyword || filters.keyword.trim() === "") {
       return true;
     }
-    
+
     // 按空格分割关键词，并过滤掉空字符串
-    const keywords = filters.keyword.split(/\s+/).filter(k => k.trim() !== "");
-    
+    const keywords = filters.keyword
+      .split(/\s+/)
+      .filter((k) => k.trim() !== "");
+
     // 如果分割后没有有效关键词，不进行过滤
     if (keywords.length === 0) {
       return true;
     }
-    
+
     // 检查是否至少有一个关键词匹配
     return keywords.some(
       (keyword) =>
@@ -918,7 +926,8 @@ const filteredAlarmData = computed(() => {
       // 2. 同等级内按时间降序（最新的在前）
 
       const getAlarmPriority = (item) => {
-        if (item.type && item.type.includes("预警") || item.level === "warn") return 2; // 次优先级
+        if ((item.type && item.type.includes("预警")) || item.level === "warn")
+          return 2; // 次优先级
         return 1; // 其他类型
       };
 
@@ -992,7 +1001,9 @@ const alarmData = computed(() => {
 const alarmCount = computed(() => filteredAlarmData.value.length);
 const warningCount = computed(
   () =>
-    filteredAlarmData.value.filter((item) => item.type.includes("预警") || item.level === "warn").length
+    filteredAlarmData.value.filter(
+      (item) => item.type.includes("预警") || item.level === "warn"
+    ).length
 );
 
 // 获取带消音标记的报警类型显示
@@ -1021,30 +1032,27 @@ const handleAckAlarm = async (row, requestAckAlarm) => {
   const stationName = row.stationName;
   const res = await getSimilarAlarms(row.ip, row.uuid);
   let remoteSimilarAlarms = [];
-  if(res.result && res.result.length > 0) {
-    remoteSimilarAlarms = res.result.map(item => ({
+  if (res.result && res.result.length > 0) {
+    remoteSimilarAlarms = res.result.map((item, i) => ({
       ...item,
+      number: i + 1,
       stationName,
+      url: `http://${row.ip}:${row.port}/app/gapHistPic/index.html?ip=${
+        row.ip
+      }&staion=${stationName}&port=${row.port}&name=${
+        item.tag
+      }&time=${Math.floor(dayjs(item.time).valueOf() / 1000)}&userlevel=3`,
     }));
-  } 
+  }
 
   // 使用 Map 按 uuid 去重，保持第一次出现的项
   const uniqueMap = new Map();
-  [row, ...remoteSimilarAlarms].forEach(item => {
-    if (item.uuid && !uniqueMap.has(item.uuid)) {
-      uniqueMap.set(item.uuid, item);
-    }
-  });
-  
+
   // 转换为数组并添加编号
-  similarAlarms.value = Array.from(uniqueMap.values())
-    .map((item, index) => ({
-      ...item,
-      number: index + 1,
-    }));
+  similarAlarms.value = remoteSimilarAlarms;
   ackRow.value = row;
   ackInfo.value = "";
-  selectedConfirmOption.value = "";
+  selectedConfirmOption.value = 0;
   ackDialogVisible.value = true;
 };
 
@@ -1053,7 +1061,7 @@ const confirmAck = async () => {
   if (!ackRow.value) return;
 
   isConfirmLoading.value = true; // 开始 loading
-  
+
   try {
     // 这里调用确认报警的API
     if (props.requestAckAlarm) {
@@ -1062,12 +1070,13 @@ const confirmAck = async () => {
       const res = await props.requestAckAlarm(ackRow.value.ip, {
         tag: ackRow.value.tag,
         ackInfo: ackInfo.value,
+        ackType: selectedConfirmOption.value,
         time: ackRow.value.time,
         port: ackRow.value.port,
         uuid: ackRow.value.uuid,
       });
 
-      if(res.result === "ok") {
+      if (res.result === "ok") {
         ElMessage.success("报警确认成功");
       } else {
         ElMessage.error("报警确认失败");
@@ -1099,7 +1108,9 @@ const handleAlarmDetail = (row) => {
   if (row.url) {
     dialogVisible.value = true;
     dialogUrl.value = row.url;
-    dialogTitle.value = `报警详情: ${row.stationName} - ${row.alarmType || row.type}`;
+    dialogTitle.value = `报警详情: ${row.stationName} - ${
+      row.alarmType || row.type
+    }`;
   }
 };
 

@@ -37,6 +37,7 @@ export const requestAckAlarm = (
     ackInfo,
     time,
     uuid,
+    ackType,
     port: 81,
     timeout: 10000,
     name: "",
@@ -54,6 +55,9 @@ export const requestAckAlarm = (
           time: options.time,
           type: options.type,
           uuid: options.uuid,
+          ...(typeof options.ackType === "number"
+            ? { ackType: Number(options.ackType) }
+            : { ackType: 0 }),
         },
       },
       {
