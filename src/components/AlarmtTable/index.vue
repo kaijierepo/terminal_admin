@@ -958,7 +958,7 @@ const filteredAlarmData = computed(() => {
                 stationInfo.port
               }/app/gapHistPic/index.html?ip=${stationInfo.ip}&staion=${
                 item.stationName
-              }&port=${stationInfo.port}&name=${zzjTag}&time=${Math.floor(
+              }&port=${stationInfo.port}&name=${zzjTag.split(".").pop()}&time=${Math.floor(
                 dayjs(item.time).valueOf() / 1000
               )}&userlevel=3`,
             }
@@ -1040,7 +1040,7 @@ const handleAckAlarm = async (row, requestAckAlarm) => {
       url: `http://${row.ip}:${row.port}/app/gapHistPic/index.html?ip=${
         row.ip
       }&staion=${stationName}&port=${row.port}&name=${
-        item.tag
+        item.tag.split(".").pop()
       }&time=${Math.floor(dayjs(item.time).valueOf() / 1000)}&userlevel=3`,
     }));
   }
