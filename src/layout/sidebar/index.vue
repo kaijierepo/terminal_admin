@@ -793,6 +793,10 @@ const handleNodeExpand = (node) => {
 
 const handleAlarm = () => {
   // console.log("侧边栏 - 集中报警");
+  if(dialogVisible.value) {
+    return;
+  }
+  
   loopQueryUnackAlarmList();
   dialogVisible.value = true;
 };
