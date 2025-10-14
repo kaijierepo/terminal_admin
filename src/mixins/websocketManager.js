@@ -269,7 +269,7 @@ export const useWebSocketManager = () => {
     });
 
     socket.on('message', (data) => {
-      console.log(`WebSocket 收到消息: ${id}`, data);
+      // console.log(`WebSocket 收到消息: ${id}`, data);
       
       if (instance.onMessage) {
         instance.onMessage(id, 'message', data);

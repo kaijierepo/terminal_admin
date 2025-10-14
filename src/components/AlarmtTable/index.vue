@@ -1105,7 +1105,7 @@ const handleAlarmDetail = (row) => {
   console.log("双击报警详情:", row);
   // 可以在这里添加显示详细信息的逻辑
   // ElMessage.info(`查看报警详情: ${row.stationName} - ${row.alarmType}`);
-  if (row.url) {
+  if (row.url && row.type.indexOf("缺口") !== -1) {
     dialogVisible.value = true;
     dialogUrl.value = row.url;
     dialogTitle.value = `报警详情: ${row.stationName} - ${

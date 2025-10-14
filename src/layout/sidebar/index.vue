@@ -55,6 +55,9 @@ const timer = ref(null);
 const alarmData = ref([]);
 const alarmtTableRef = ref(null);
 
+// 跟踪已执行过 loopQueryUnackAlarmList 的异常 IP
+const unhealthyIpsQueried = ref(new Set());
+
 // 轮询配置
 const POLLING_CONFIG_KEY = "alarm_polling_config";
 const DEFAULT_POLLING_INTERVAL = 20 * 60; // 默认20分钟，单位：秒
@@ -212,6 +215,7 @@ const handleRemoveConfirmedAlarms = (confirmedItems) => {
 const handleWebSocketMessage = (connectionId, eventName, ...args) => {
   console.log(`收到 WebSocket 消息: ${connectionId} -> ${eventName}`, args);
 
+  handleAlarm();
   // console.log('args[0]:##################', args[0]);
   handleAlarmMessage(connectionId, args[0]);
 };
@@ -223,6 +227,18 @@ const handleWebSocketError = (connectionId, error) => {
 
 const handleWebSocketConnect = (connectionId, socket) => {
   console.log(`WebSocket 连接成功: ${connectionId}`);
+  
+  // 提取IP地址
+  const [stationName, ip, port] = connectionId.split("-");
+  
+  // 检查这个IP之前是否因为异常而执行过 loopQueryUnackAlarmList
+  if (unhealthyIpsQueried.value.has(ip)) {
+    console.log(`IP ${ip} 重连成功，执行 loopQueryUnackAlarmList`);
+    loopQueryUnackAlarmList();
+    // 从异常IP集合中移除，因为已经重连成功
+    unhealthyIpsQueried.value.delete(ip);
+  }
+  
   // 连接成功后可以发送认证消息等
   sendMessage(connectionId, "auth", { type: "client", timestamp: Date.now() });
 };
@@ -460,6 +476,9 @@ onUnmounted(() => {
   // 清理报警数据，释放内存
   alarmData.value = [];
 
+  // 清理异常IP记录
+  unhealthyIpsQueried.value.clear();
+
   // 关闭所有 WebSocket 连接
   closeAllConnections();
 
@@ -545,6 +564,26 @@ const monitorConnectionHealth = () => {
 
   if (unhealthyConnections.length > 0) {
     console.warn("发现异常连接，尝试重连:", unhealthyConnections);
+    
+    // 提取异常连接的IP地址
+    const unhealthyIps = new Set();
+    unhealthyConnections.forEach(([id]) => {
+      const [stationName, ip, port] = id.split("-");
+      unhealthyIps.add(ip);
+    });
+    
+    // 检查哪些IP还没有执行过 loopQueryUnackAlarmList
+    const newUnhealthyIps = Array.from(unhealthyIps).filter(ip => !unhealthyIpsQueried.value.has(ip));
+    
+    if (newUnhealthyIps.length > 0) {
+      console.log("发现新的异常IP，执行 loopQueryUnackAlarmList:", newUnhealthyIps);
+      // 执行 loopQueryUnackAlarmList
+      loopQueryUnackAlarmList();
+      
+      // 记录这些IP已经执行过
+      newUnhealthyIps.forEach(ip => unhealthyIpsQueried.value.add(ip));
+    }
+    
     const stationIds = unhealthyConnections.map(([id]) => id);
     reconnectStations(stationIds);
   }
@@ -753,7 +792,8 @@ const handleNodeExpand = (node) => {
 };
 
 const handleAlarm = () => {
-  console.log("侧边栏 - 集中报警");
+  // console.log("侧边栏 - 集中报警");
+  loopQueryUnackAlarmList();
   dialogVisible.value = true;
 };
 
