@@ -681,17 +681,43 @@ const UpSelectedTopoVer = async () => {
     ElMessage.warning("请先选择要升级站场图的站点");
     return;
   }
-  
   try {
-    const response = await requestUpTopoVer(selectedStations.value.ip);
-    if (response) {
-      ElMessage.success("升级站场图成功");
-    } else {
-      ElMessage.warning("升级站场图失败");
+    // 逐个请求选中站点的系统信息
+    for (let i = 0; i < selectedStations.value.length; i++) {
+      const station = selectedStations.value[i];
+
+      // 设置单个站点的loading状态
+      station.loading = true;
+
+      try {
+        const response = await requestUpTopoVer(station.ip);
+        if (response && response.result) {
+          ElMessage.success(`${station.stationName} 升级成功`);
+        } else {
+          ElMessage.warning(`${station.stationName} 升级失败`);
+        }
+      } catch (error) {
+        console.error(`${station.stationName} 升级失败:`, error);
+        ElMessage.error(
+          `${station.stationName} 升级失败: ${
+            error.message || "网络错误"
+          }`
+        );
+      } finally {
+        // 清除单个站点的loading状态
+        station.loading = false;
+      }
+
+      // 添加延迟，避免请求过于频繁
+      if (i < selectedStations.value.length - 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+      }
     }
+    // 获取完成
+    ElMessage.success(`刷新完成，共处理 ${selectedStations.value.length} 个选中站点`);
   } catch (error) {
-    console.error("升级站场图失败:", error);
-    ElMessage.error("升级站场图失败");
+    console.error("升级失败:", error);
+    ElMessage.error("升级失败");
   }
 };
 
