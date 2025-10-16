@@ -89,7 +89,7 @@
       <div class="filter-row">
         <el-input
           v-model.trim="filters.keyword"
-          placeholder="筛选 (空格隔开,自由组合条件)"
+          placeholder="筛选(多个条件可由|(或)和&(与)隔开, &的优先级更高)"
           clearable
           size="small"
           class="keyword-input"
@@ -892,23 +892,42 @@ const filteredAlarmData = computed(() => {
       return true;
     }
 
-    // 按空格分割关键词，并过滤掉空字符串
-    const keywords = filters.keyword
-      .split(/\s+/)
-      .filter((k) => k.trim() !== "");
+    // 将所有匹配字段转为小写，用于不区分大小写匹配
+    const searchFields = [
+      item.type || "",
+      item.detail || "",
+      item.tag || "",
+      item.stationName || "",
+    ].map(field => field.toLowerCase());
 
-    // 如果分割后没有有效关键词，不进行过滤
-    if (keywords.length === 0) {
+    // 检查单个关键词是否匹配
+    const matchKeyword = (keyword) => {
+      const lowerKeyword = keyword.toLowerCase().trim();
+      if (!lowerKeyword) return true;
+      return searchFields.some(field => field.includes(lowerKeyword));
+    };
+
+    // 按 | 分割（OR 条件，优先级最低）
+    const orGroups = filters.keyword.split('|').filter(g => g.trim());
+    
+    // 如果没有有效的关键词组，不过滤
+    if (orGroups.length === 0) {
       return true;
     }
 
-    // 检查是否至少有一个关键词匹配
-    return keywords.some(
-      (keyword) =>
-        item.type.includes(keyword) ||
-        (item.detail && item.detail.includes(keyword)) ||
-        item.tag.includes(keyword)
-    );
+    // 只要有一个 OR 组满足条件即可
+    return orGroups.some(orGroup => {
+      // 每个 OR 组内按 & 分割（AND 条件，优先级更高）
+      const andKeywords = orGroup.split('&').filter(k => k.trim());
+      
+      // 如果没有有效关键词，认为该组满足
+      if (andKeywords.length === 0) {
+        return true;
+      }
+      
+      // AND 组内所有关键词都要匹配
+      return andKeywords.every(keyword => matchKeyword(keyword));
+    });
   };
 
   const result = props.alarmData
