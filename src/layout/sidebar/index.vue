@@ -313,8 +313,9 @@ const handleAlarmUpdate = (alarmParams) => {
   if (existingIndex !== -1) {
     // 更新已存在的报警
     console.log(`🔄 更新已存在的报警，uuid: ${uuid}`);
+    const updateRecover = { isRecover: alarmParams.isRecover, recoverTime: alarmParams.recoverTime };
     const oldAlarm = alarmData.value[existingIndex];
-    alarmData.value[existingIndex] = { ...oldAlarm, ...alarmParams };
+    alarmData.value[existingIndex] = { ...oldAlarm, ...updateRecover };
     console.log("更新前:", oldAlarm);
     console.log("更新后:", alarmData.value[existingIndex]);
   } else {
