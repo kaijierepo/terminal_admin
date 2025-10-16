@@ -159,7 +159,11 @@
           </template>
         </el-table-column>
 
-        <el-table-column prop="time" label="报警时间" width="140" />
+        <el-table-column prop="time" label="报警时间" width="160" >
+          <template #default="{ row }">
+            {{ row.time }}{{  Boolean(row.isWinRepair) ? "(天窗)" : "" }}
+          </template>
+        </el-table-column>
 
         <el-table-column
           prop="acqtype"
@@ -1002,9 +1006,15 @@ const alarmCount = computed(() => filteredAlarmData.value.length);
 const warningCount = computed(
   () =>
     filteredAlarmData.value.filter(
-      (item) => item.type.includes("预警") || item.level === "warn"
+      (item) => item.level === "warn"
     ).length
 );
+
+const alarmLevelCount = computed(() => {
+  return filteredAlarmData.value.filter(
+    (item) => item.level === "alarm"
+  ).length;
+});
 
 // 获取带消音标记的报警类型显示
 const getAlarmTypeDisplay = (alarm) => {

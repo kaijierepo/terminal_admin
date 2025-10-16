@@ -203,7 +203,7 @@ const handleClose = () => {
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15);
   display: flex;
   flex-direction: column;
-  max-height: 90vh;
+  // max-height: 90vh;
   transition: transform 0.01s linear;
 }
 
