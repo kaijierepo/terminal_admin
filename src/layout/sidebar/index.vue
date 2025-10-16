@@ -1,8 +1,9 @@
-<script setup lang="tsx">
+<script setup >
 import { ref, onMounted, computed, watch } from "vue";
 import { getStationList } from "@/api/config";
 import StationTree from "@/components/StationTree/index.vue";
 import AlarmtTable from "@/components/AlarmtTable/index.vue";
+import DraggableDialog from "@/components/DraggableDialog/index.vue";
 import digTree from "./config";
 import { ArrowLeft, ArrowRight, Setting } from "@element-plus/icons-vue";
 import { requestUnackAlarmList, requestAckAlarm, requestSimialrAlarm } from "@/api/alarm";
@@ -796,7 +797,7 @@ const handleAlarm = () => {
   if(dialogVisible.value) {
     return;
   }
-  
+
   loopQueryUnackAlarmList();
   dialogVisible.value = true;
 };
@@ -909,13 +910,13 @@ watch(
       </el-icon>
     </div>
 
-    <el-dialog
+    <DraggableDialog
       v-model="dialogVisible"
       title="未确认的报警信息(集中监测)"
       width="80vw"
       :before-close="handleClose"
       :close-on-click-modal="false"
-      :close-on-press-escape="false"
+      :modal="false"
     >
       <AlarmtTable
         ref="alarmtTableRef"
@@ -927,7 +928,7 @@ watch(
         :alarmData="alarmData"
         :requestSimialrAlarm="requestSimialrAlarm"
       />
-    </el-dialog>
+    </DraggableDialog>
 
     <!-- 轮询配置对话框 -->
     <el-dialog
@@ -1190,3 +1191,4 @@ watch(
   }
 }
 </style>
+

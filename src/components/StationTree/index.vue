@@ -13,7 +13,7 @@
           @click="toggleExpandAll"
           :icon="allExpanded ? 'Minus' : 'Plus'"
         >
-          {{ allExpanded ? '全部收起' : '全部展开' }}
+          {{ allExpanded ? "全部收起" : "全部展开" }}
         </el-button>
         <el-dropdown @command="handleHeaderAction" trigger="click">
           <el-button size="small" type="primary" :icon="Setting">
@@ -24,15 +24,19 @@
               <el-dropdown-item command="add-line">添加线路</el-dropdown-item>
               <!-- <el-dropdown-item command="add-workshop">添加车间</el-dropdown-item>
               <el-dropdown-item command="add-station">添加站点</el-dropdown-item> -->
-              <el-dropdown-item command="export" divided>导出数据</el-dropdown-item>
+              <el-dropdown-item command="export" divided
+                >导出数据</el-dropdown-item
+              >
               <el-dropdown-item command="import">导入数据</el-dropdown-item>
-              <el-dropdown-item command="reset" divided>重置为默认</el-dropdown-item>
+              <el-dropdown-item command="reset" divided
+                >重置为默认</el-dropdown-item
+              >
             </el-dropdown-menu>
           </template>
         </el-dropdown>
       </div>
     </div>
-    
+
     <div class="tree-content">
       <div
         v-for="line in stationTree"
@@ -40,9 +44,7 @@
         class="tree-node line-node"
       >
         <!-- 线路节点 -->
-        <div
-          class="node-content line-content"
-        >
+        <div class="node-content line-content">
           <div class="node-indicator" @click="toggleNode(line)">
             <el-icon class="expand-icon" :class="{ expanded: line.expanded }">
               <ArrowRight />
@@ -52,115 +54,157 @@
             </el-icon>
           </div>
           <div class="node-info flex">
-            <div class="node-name" @click="toggleNode(line)">{{ line.name }}（{{ line.children?.length || 0 }}）</div>
+            <div class="node-name" @click="toggleNode(line)">
+              {{ line.name }}（{{ line.children?.length || 0 }}）
+            </div>
           </div>
           <div class="node-actions">
-            <el-dropdown @command="(command) => handleNodeAction(line, command)" trigger="click" @click.stop>
+            <el-dropdown
+              @command="(command) => handleNodeAction(line, command)"
+              trigger="click"
+              @click.stop
+            >
               <el-button size="small" type="text" :icon="MoreFilled">
               </el-button>
               <template #dropdown>
                 <el-dropdown-menu>
                   <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                  <el-dropdown-item command="add-workshop">添加车间</el-dropdown-item>
-                  <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
+                  <el-dropdown-item command="add-workshop"
+                    >添加车间</el-dropdown-item
+                  >
+                  <el-dropdown-item command="delete" divided
+                    >删除</el-dropdown-item
+                  >
                 </el-dropdown-menu>
               </template>
             </el-dropdown>
           </div>
         </div>
-        
+
         <!-- 车间子节点 -->
+        <div v-show="line.expanded" class="children-container">
           <div
-            v-show="line.expanded"
-            class="children-container"
+            v-for="workshop in line.children"
+            :key="workshop.id"
+            class="tree-node workshop-node"
           >
-            <div
-              v-for="workshop in line.children"
-              :key="workshop.id"
-              class="tree-node workshop-node"
-            >
-              <!-- 车间节点 -->
-              <div
-                class="node-content workshop-content"
-              >
-                <div class="node-indicator" @click="toggleNode(workshop)">
-                  <el-icon class="expand-icon" :class="{ expanded: workshop.expanded }">
-                    <ArrowRight />
-                  </el-icon>
-                  <el-icon class="node-icon workshop-icon">
-                    <OfficeBuilding />
-                  </el-icon>
-                </div>
-                <div class="node-info flex" @click="toggleNode(workshop)">
-                  <div class="node-name">{{ workshop.name }}（{{ workshop.children?.length || 0 }}）</div>
-                </div>
-                <div class="node-actions">
-                  <el-dropdown @command="(command) => handleNodeAction(workshop, command, line)" trigger="click" @click.stop>
-                    <el-button size="small" type="text" :icon="MoreFilled">
-                    </el-button>
-                    <template #dropdown>
-                      <el-dropdown-menu>
-                        <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                        <el-dropdown-item command="add-station">添加站点</el-dropdown-item>
-                        <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
-                      </el-dropdown-menu>
-                    </template>
-                  </el-dropdown>
+            <!-- 车间节点 -->
+            <div class="node-content workshop-content">
+              <div class="node-indicator" @click="toggleNode(workshop)">
+                <el-icon
+                  class="expand-icon"
+                  :class="{ expanded: workshop.expanded }"
+                >
+                  <ArrowRight />
+                </el-icon>
+                <el-icon class="node-icon workshop-icon">
+                  <OfficeBuilding />
+                </el-icon>
+              </div>
+              <div class="node-info flex" @click="toggleNode(workshop)">
+                <div class="node-name">
+                  {{ workshop.name }}（{{ workshop.children?.length || 0 }}）
                 </div>
               </div>
-              
-              <!-- 站点子节点 -->
-                <div
-                  v-show="workshop.expanded"
-                  class="children-container"
+              <div class="node-actions">
+                <el-dropdown
+                  @command="
+                    (command) => handleNodeAction(workshop, command, line)
+                  "
+                  trigger="click"
+                  @click.stop
                 >
+                  <el-button size="small" type="text" :icon="MoreFilled">
+                  </el-button>
+                  <template #dropdown>
+                    <el-dropdown-menu>
+                      <el-dropdown-item command="edit">编辑</el-dropdown-item>
+                      <el-dropdown-item command="add-station"
+                        >添加站点</el-dropdown-item
+                      >
+                      <el-dropdown-item command="delete" divided
+                        >删除</el-dropdown-item
+                      >
+                    </el-dropdown-menu>
+                  </template>
+                </el-dropdown>
+              </div>
+            </div>
+
+            <!-- 站点子节点 -->
+            <div v-show="workshop.expanded" class="children-container">
+              <div
+                v-for="station in workshop.children"
+                :key="station.id"
+                class="tree-node station-node"
+                :class="{ selected: isStationSelected(station) }"
+              >
+                <div class="node-content station-content">
+                  <div class="node-indicator">
+                    <el-icon
+                      class="node-icon station-icon"
+                      :class="getStationStatusClass(station)"
+                    >
+                      <Monitor />
+                    </el-icon>
+                  </div>
                   <div
-                    v-for="station in workshop.children"
-                    :key="station.id"
-                    class="tree-node station-node"
-                    :class="{ 'selected': isStationSelected(station) }"
+                    class="node-info station-info"
+                    @click="handleStationAction(station, 'select')"
                   >
-                    <div class="node-content station-content">
-                      <div class="node-indicator">
-                        <el-icon class="node-icon station-icon" :class="getStationStatusClass(station)">
-                          <Monitor />
-                        </el-icon>
-                      </div>
-                      <div class="node-info station-info" @click="handleStationAction(station, 'select')">
-                        <div class="node-name" :class="getStationStatusClass(station)">
-                          {{ station.name }}
-                        </div>
-                        <div class="node-meta">
-                          <span class="station-ip">{{ station.ip }}</span>
-                          <!--<span class="station-port">:{{ station.port }}</span>
+                    <div
+                      class="node-name"
+                      :class="getStationStatusClass(station)"
+                    >
+                      {{ station.name }}
+                    </div>
+                    <div class="node-meta">
+                      <span class="station-ip">{{ station.ip }}</span>
+                      <!--<span class="station-port">:{{ station.port }}</span>
                           <span 
                             class="station-status" 
                             :class="getStationStatusClass(station)"
                           >
                             {{ getStationStatusText(station) }}
                           </span> -->
-                        </div>
-                      </div>
-                      <div class="node-actions">
-                        <el-dropdown @command="(command) => handleNodeAction(station, command, workshop, line)" trigger="click" @click.stop>
-                          <el-button size="small" type="text" :icon="MoreFilled" style="color: #409eff; font-size: 12px;">
-                          </el-button>
-                          <template #dropdown>
-                            <el-dropdown-menu>
-                              <el-dropdown-item command="edit">编辑</el-dropdown-item>
-                              <el-dropdown-item command="delete" divided>删除</el-dropdown-item>
-                            </el-dropdown-menu>
-                          </template>
-                        </el-dropdown>
-                      </div>
                     </div>
                   </div>
+                  <div class="node-actions">
+                    <el-dropdown
+                      @command="
+                        (command) =>
+                          handleNodeAction(station, command, workshop, line)
+                      "
+                      trigger="click"
+                      @click.stop
+                    >
+                      <el-button
+                        size="small"
+                        type="text"
+                        :icon="MoreFilled"
+                        style="color: #409eff; font-size: 12px"
+                      >
+                      </el-button>
+                      <template #dropdown>
+                        <el-dropdown-menu>
+                          <el-dropdown-item command="edit"
+                            >编辑</el-dropdown-item
+                          >
+                          <el-dropdown-item command="delete" divided
+                            >删除</el-dropdown-item
+                          >
+                        </el-dropdown-menu>
+                      </template>
+                    </el-dropdown>
+                  </div>
                 </div>
+              </div>
             </div>
           </div>
+        </div>
       </div>
     </div>
-    
+
     <!-- 空状态 -->
     <div v-if="!stationTree || stationTree.length === 0" class="empty-state">
       <el-icon class="empty-icon"><Box /></el-icon>
@@ -186,16 +230,21 @@
       <el-form-item label="名称" prop="name">
         <el-input v-model="formData.name" placeholder="请输入名称" />
       </el-form-item>
-      
+
       <el-form-item v-if="formData.type === 'station'" label="IP地址" prop="ip">
         <el-input v-model="formData.ip" placeholder="请输入IP地址" />
       </el-form-item>
-      
+
       <el-form-item v-if="formData.type === 'station'" label="端口" prop="port">
-        <el-input-number v-model="formData.port" :min="1" :max="65535" placeholder="端口号" />
+        <el-input-number
+          v-model="formData.port"
+          :min="1"
+          :max="65535"
+          placeholder="端口号"
+        />
       </el-form-item>
     </el-form>
-    
+
     <template #footer>
       <div class="dialog-footer">
         <el-button @click="dialogVisible = false">取消</el-button>
@@ -206,8 +255,8 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, readonly } from 'vue'
-import { ElMessage, ElMessageBox } from 'element-plus'
+import { ref, computed, watch, readonly } from "vue";
+import { ElMessage, ElMessageBox } from "element-plus";
 import {
   OfficeBuilding,
   Monitor,
@@ -219,150 +268,170 @@ import {
   Setting,
   MoreFilled,
   Download,
-  Upload
-} from '@element-plus/icons-vue'
+  Upload,
+} from "@element-plus/icons-vue";
 
 // 定义组件属性
 const props = defineProps({
   // 站点树数据
   data: {
     type: Array,
-    default: () => []
+    default: () => [],
   },
   // 是否默认展开所有节点
   defaultExpandAll: {
     type: Boolean,
-    default: true
+    default: true,
   },
   // 是否默认选择第一个站点
   defaultSelectFirst: {
     type: Boolean,
-    default: true
-  }
-})
+    default: true,
+  },
+});
 
 // 定义组件事件
-const emit = defineEmits(['station-select', 'station-connect', 'node-expand', 'tree-change', 'tree-reset', 'data-export', 'data-import'])
+const emit = defineEmits([
+  "station-select",
+  "station-connect",
+  "node-expand",
+  "tree-change",
+  "tree-reset",
+  "data-export",
+  "data-import",
+]);
 
 // 响应式数据
-const stationTree = ref([])
-const allExpanded = ref(true)
-const selectedStation = ref(null) // 当前选中的站点
+const stationTree = ref([]);
+const allExpanded = ref(true);
+const selectedStation = ref(null); // 当前选中的站点
 
 // 对话框相关
-const dialogVisible = ref(false)
-const dialogTitle = ref('')
-const formRef = ref()
+const dialogVisible = ref(false);
+const dialogTitle = ref("");
+const formRef = ref();
 const formData = ref({
-  name: '',
-  ip: '',
+  name: "",
+  ip: "",
   port: 81,
-  type: '', // line, workshop, station
+  type: "", // line, workshop, station
   parentNode: null, // 父节点引用
-  editingNode: null // 编辑的节点引用
-})
+  editingNode: null, // 编辑的节点引用
+});
 
 // 表单验证规则
 const formRules = {
   name: [
-    { required: true, message: '请输入名称', trigger: 'blur' },
-    { min: 2, max: 20, message: '名称长度在 2 到 20 个字符', trigger: 'blur' }
+    { required: true, message: "请输入名称", trigger: "blur" },
+    { min: 2, max: 20, message: "名称长度在 2 到 20 个字符", trigger: "blur" },
   ],
   ip: [
-    { required: true, message: '请输入IP地址', trigger: 'blur' },
-    { 
-      pattern: /^(\d{1,3}\.){3}\d{1,3}$/, 
-      message: '请输入正确的IP地址格式', 
-      trigger: 'blur' 
-    }
+    { required: true, message: "请输入IP地址", trigger: "blur" },
+    {
+      pattern: /^(\d{1,3}\.){3}\d{1,3}$/,
+      message: "请输入正确的IP地址格式",
+      trigger: "blur",
+    },
   ],
   port: [
-    { required: true, message: '请输入端口号', trigger: 'blur' },
-    { type: 'number', min: 1, max: 65535, message: '端口号范围为 1-65535', trigger: 'blur' }
-  ]
-}
+    { required: true, message: "请输入端口号", trigger: "blur" },
+    {
+      type: "number",
+      min: 1,
+      max: 65535,
+      message: "端口号范围为 1-65535",
+      trigger: "blur",
+    },
+  ],
+};
 
 // 初始化树数据
 const initTreeData = (data) => {
   const setExpanded = (nodes, expanded) => {
-    return nodes.map(node => ({
+    return nodes.map((node) => ({
       ...node,
       expanded: expanded,
-      children: node.children ? setExpanded(node.children, expanded) : undefined
-    }))
-  }
-  
-  stationTree.value = setExpanded(data, props.defaultExpandAll)
-  
+      children: node.children
+        ? setExpanded(node.children, expanded)
+        : undefined,
+    }));
+  };
+
+  stationTree.value = setExpanded(data, props.defaultExpandAll);
+
   // 自动选择第一个站点
   if (props.defaultSelectFirst) {
-    const firstStation = findFirstStation(stationTree.value)
+    const firstStation = findFirstStation(stationTree.value);
     if (firstStation && !selectedStation.value) {
-      selectedStation.value = firstStation
-      emit('station-select', firstStation)
+      selectedStation.value = firstStation;
+      emit("station-select", firstStation);
     }
   }
-}
+};
 
 // 监听数据变化
-watch(() => props.data, (newData) => {
-  if (newData && newData.length > 0) {
-    initTreeData(newData)
-  }
-}, { immediate: true })
+watch(
+  () => props.data,
+  (newData) => {
+    if (newData && newData.length > 0) {
+      initTreeData(newData);
+    }
+  },
+  { immediate: true }
+);
 
 // 切换节点展开/收起状态
 const toggleNode = (node) => {
-  node.expanded = !node.expanded
-  emit('node-expand', node)
-}
+  node.expanded = !node.expanded;
+  emit("node-expand", node);
+};
 
 // 切换全部展开/收起
 const toggleExpandAll = () => {
-  allExpanded.value = !allExpanded.value
-  
+  allExpanded.value = !allExpanded.value;
+
   const setAllExpanded = (nodes, expanded) => {
-    nodes.forEach(node => {
-      node.expanded = expanded
+    nodes.forEach((node) => {
+      node.expanded = expanded;
       if (node.children) {
-        setAllExpanded(node.children, expanded)
+        setAllExpanded(node.children, expanded);
       }
-    })
-  }
-  
-  setAllExpanded(stationTree.value, allExpanded.value)
-}
+    });
+  };
+
+  setAllExpanded(stationTree.value, allExpanded.value);
+};
 
 // 获取站点状态样式类
 const getStationStatusClass = (station) => {
-  if (station.name && station.name.includes('通信中断')) {
-    return 'status-offline'
+  if (station.name && station.name.includes("通信中断")) {
+    return "status-offline";
   }
-  return 'status-online'
-}
+  return "status-online";
+};
 
 // 获取站点状态文本
 const getStationStatusText = (station) => {
-  if (station.name && station.name.includes('通信中断')) {
-    return '离线'
+  if (station.name && station.name.includes("通信中断")) {
+    return "离线";
   }
-  return '在线'
-}
+  return "在线";
+};
 
 // 判断站点是否被选中
 const isStationSelected = (station) => {
-  return selectedStation.value && selectedStation.value.id === station.id
-}
+  return selectedStation.value && selectedStation.value.id === station.id;
+};
 
 // 清除选中状态
 const clearSelection = () => {
-  selectedStation.value = null
-}
+  selectedStation.value = null;
+};
 
 // 设置选中状态
 const setSelectedStation = (station) => {
-  selectedStation.value = station
-}
+  selectedStation.value = station;
+};
 
 // 查找第一个站点
 const findFirstStation = (nodes) => {
@@ -371,453 +440,480 @@ const findFirstStation = (nodes) => {
       for (const child of node.children) {
         if (child.children) {
           for (const station of child.children) {
-            if (station.ip) { // 确保是站点节点
-              return station
+            if (station.ip) {
+              // 确保是站点节点
+              return station;
             }
           }
         }
       }
     }
   }
-  return null
-}
+  return null;
+};
 
 // 选择第一个站点
 const selectFirstStation = () => {
-  const firstStation = findFirstStation(stationTree.value)
+  const firstStation = findFirstStation(stationTree.value);
   if (firstStation) {
-    selectedStation.value = firstStation
-    emit('station-select', firstStation)
-    return firstStation
+    selectedStation.value = firstStation;
+    emit("station-select", firstStation);
+    return firstStation;
   }
-  return null
-}
+  return null;
+};
 
 // 处理站点操作
 const handleStationAction = (station, action) => {
   switch (action) {
-    case 'connect':
-      emit('station-connect', station)
-      ElMessage.success(`正在连接到 ${station.name}`)
-      break
-    case 'select':
+    case "connect":
+      emit("station-connect", station);
+      ElMessage.success(`正在连接到 ${station.name}`);
+      break;
+    case "select":
       // 设置选中状态
-      selectedStation.value = station
-      emit('station-select', station)
-      break
+      selectedStation.value = station;
+      emit("station-select", station);
+      break;
     default:
-      selectedStation.value = station
-      emit('station-select', station)
+      selectedStation.value = station;
+      emit("station-select", station);
   }
-}
+};
 
 // 处理头部操作
 const handleHeaderAction = async (command) => {
   switch (command) {
-    case 'add-line':
-      openDialog('添加线路', 'line')
-      break
-    case 'add-workshop':
-      openDialog('添加车间', 'workshop')
-      break
-    case 'add-station':
-      openDialog('添加站点', 'station')
-      break
-    case 'export':
-      handleExportData()
-      break
-    case 'import':
-      handleImportData()
-      break
-    case 'reset':
+    case "add-line":
+      openDialog("添加线路", "line");
+      break;
+    case "add-workshop":
+      openDialog("添加车间", "workshop");
+      break;
+    case "add-station":
+      openDialog("添加站点", "station");
+      break;
+    case "export":
+      handleExportData();
+      break;
+    case "import":
+      handleImportData();
+      break;
+    case "reset":
       try {
         await ElMessageBox.confirm(
-          '确定要重置为默认数据吗？这将清除所有自定义的站点信息。',
-          '重置确认',
+          "确定要重置为默认数据吗？这将清除所有自定义的站点信息。",
+          "重置确认",
           {
-            confirmButtonText: '确定',
-            cancelButtonText: '取消',
-            type: 'warning',
+            confirmButtonText: "确定",
+            cancelButtonText: "取消",
+            type: "warning",
           }
-        )
-        emit('tree-reset')
-        ElMessage.success('已重置为默认数据')
+        );
+        emit("tree-reset");
+        ElMessage.success("已重置为默认数据");
       } catch {
-        ElMessage.info('已取消重置')
+        ElMessage.info("已取消重置");
       }
-      break
+      break;
   }
-}
+};
 
 // 处理节点操作
-const handleNodeAction = (node, command, parentNode = null, grandParentNode = null) => {
+const handleNodeAction = (
+  node,
+  command,
+  parentNode = null,
+  grandParentNode = null
+) => {
   switch (command) {
-    case 'edit':
-      openEditDialog(node)
-      break
-    case 'add-workshop':
-      if (node.type === 'line' || !node.type) {
-        openDialog('添加车间', 'workshop', node)
+    case "edit":
+      openEditDialog(node);
+      break;
+    case "add-workshop":
+      if (node.type === "line" || !node.type) {
+        openDialog("添加车间", "workshop", node);
       }
-      break
-    case 'add-station':
-      if (node.type === 'workshop' || !node.type) {
-        openDialog('添加站点', 'station', node)
+      break;
+    case "add-station":
+      if (node.type === "workshop" || !node.type) {
+        openDialog("添加站点", "station", node);
       }
-      break
-    case 'delete':
-      handleDelete(node, parentNode)
-      break
+      break;
+    case "delete":
+      handleDelete(node, parentNode);
+      break;
   }
-}
+};
 
 // 打开添加对话框
 const openDialog = (title, type, parentNode = null) => {
-  dialogTitle.value = title
+  dialogTitle.value = title;
   formData.value = {
-    name: '',
-    ip: '',
+    name: "",
+    ip: "",
     port: 81,
     type: type,
     parentNode: parentNode,
-    editingNode: null
-  }
-  dialogVisible.value = true
-}
+    editingNode: null,
+  };
+  dialogVisible.value = true;
+};
 
 // 打开编辑对话框
 const openEditDialog = (node) => {
-  dialogTitle.value = `编辑${getNodeTypeText(node)}`
+  dialogTitle.value = `编辑${getNodeTypeText(node)}`;
   formData.value = {
     name: node.name,
-    ip: node.ip || '',
+    ip: node.ip || "",
     port: node.port || 81,
     type: getNodeType(node),
     parentNode: null,
-    editingNode: node
-  }
-  dialogVisible.value = true
-}
+    editingNode: node,
+  };
+  dialogVisible.value = true;
+};
 
 // 获取节点类型
 const getNodeType = (node) => {
-  if (node.ip) return 'station'
-  if (node.children && node.children.some(child => child.ip)) return 'workshop'
-  return 'line'
-}
+  if (node.ip) return "station";
+  if (node.children && node.children.some((child) => child.ip))
+    return "workshop";
+  return "line";
+};
 
 // 获取节点类型文本
 const getNodeTypeText = (node) => {
-  const type = getNodeType(node)
+  const type = getNodeType(node);
   const typeMap = {
-    line: '线路',
-    workshop: '车间',
-    station: '站点'
-  }
-  return typeMap[type] || '节点'
-}
+    line: "线路",
+    workshop: "车间",
+    station: "站点",
+  };
+  return typeMap[type] || "节点";
+};
 
 // 处理删除
 const handleDelete = async (node, parentNode) => {
-  const nodeTypeText = getNodeTypeText(node)
+  const nodeTypeText = getNodeTypeText(node);
   try {
     await ElMessageBox.confirm(
-      `确定要删除${nodeTypeText}"${node.name}"吗？${node.children ? '删除后将同时删除所有子节点。' : ''}`,
-      '删除确认',
+      `确定要删除${nodeTypeText}"${node.name}"吗？${
+        node.children ? "删除后将同时删除所有子节点。" : ""
+      }`,
+      "删除确认",
       {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning',
+        confirmButtonText: "确定",
+        cancelButtonText: "取消",
+        type: "warning",
       }
-    )
-    
+    );
+
     if (parentNode) {
       // 删除子节点
-      const index = parentNode.children.findIndex(child => child.id === node.id)
+      const index = parentNode.children.findIndex(
+        (child) => child.id === node.id
+      );
       if (index > -1) {
-        parentNode.children.splice(index, 1)
+        parentNode.children.splice(index, 1);
       }
     } else {
       // 删除根节点
-      const index = stationTree.value.findIndex(item => item.id === node.id)
+      const index = stationTree.value.findIndex((item) => item.id === node.id);
       if (index > -1) {
-        stationTree.value.splice(index, 1)
+        stationTree.value.splice(index, 1);
       }
     }
-    
-    ElMessage.success(`删除${nodeTypeText}成功`)
-    emit('tree-change', stationTree.value)
+
+    ElMessage.success(`删除${nodeTypeText}成功`);
+    emit("tree-change", stationTree.value);
   } catch {
-    ElMessage.info('已取消删除')
+    ElMessage.info("已取消删除");
   }
-}
+};
 
 // 提交表单
 const handleSubmit = async () => {
   try {
-    await formRef.value.validate()
-    
+    await formRef.value.validate();
+
     if (formData.value.editingNode) {
       // 编辑模式
-      formData.value.editingNode.name = formData.value.name
-      if (formData.value.type === 'station') {
-        formData.value.editingNode.ip = formData.value.ip
-        formData.value.editingNode.port = formData.value.port
+      formData.value.editingNode.name = formData.value.name;
+      if (formData.value.type === "station") {
+        formData.value.editingNode.ip = formData.value.ip;
+        formData.value.editingNode.port = formData.value.port;
       }
-      ElMessage.success(`编辑${getNodeTypeText(formData.value.editingNode)}成功`)
+      ElMessage.success(
+        `编辑${getNodeTypeText(formData.value.editingNode)}成功`
+      );
     } else {
       // 添加模式
-      const newNode = createNewNode(formData.value)
-      
+      const newNode = createNewNode(formData.value);
+
       if (formData.value.parentNode) {
         // 添加到父节点
         if (!formData.value.parentNode.children) {
-          formData.value.parentNode.children = []
+          formData.value.parentNode.children = [];
         }
-        formData.value.parentNode.children.push(newNode)
+        formData.value.parentNode.children.push(newNode);
         // 自动展开父节点
-        formData.value.parentNode.expanded = true
+        formData.value.parentNode.expanded = true;
       } else {
         // 添加到根节点
-        stationTree.value.push(newNode)
+        stationTree.value.push(newNode);
       }
-      
-      ElMessage.success(`添加${getNodeTypeText(newNode)}成功`)
+
+      ElMessage.success(`添加${getNodeTypeText(newNode)}成功`);
     }
-    
-    dialogVisible.value = false
-    emit('tree-change', stationTree.value)
+
+    dialogVisible.value = false;
+    emit("tree-change", stationTree.value);
   } catch (error) {
-    console.error('表单验证失败:', error)
+    console.error("表单验证失败:", error);
   }
-}
+};
 
 // 创建新节点
 const createNewNode = (formData) => {
   const baseNode = {
     id: generateId(formData.type),
     name: formData.name,
-    expanded: false
-  }
-  
-  if (formData.type === 'station') {
+    expanded: false,
+  };
+
+  if (formData.type === "station") {
     return {
       ...baseNode,
       ip: formData.ip,
-      port: formData.port
-    }
+      port: formData.port,
+    };
   } else {
     return {
       ...baseNode,
-      children: []
-    }
+      children: [],
+    };
   }
-}
+};
 
 // 生成ID
 const generateId = (type) => {
-  const timestamp = Date.now()
-  const random = Math.random().toString(36).substr(2, 5)
-  return `${type}_${timestamp}_${random}`
-}
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 5);
+  return `${type}_${timestamp}_${random}`;
+};
 
 // 导出数据
 const handleExportData = () => {
   try {
     // 清理数据，移除展开状态等临时属性
     const cleanData = (nodes) => {
-      return nodes.map(node => {
+      return nodes.map((node) => {
         const cleaned = {
           id: node.id,
           name: node.name,
-          type: getNodeType(node)
-        }
-        
+          type: getNodeType(node),
+        };
+
         // 添加站点特有属性
         if (node.ip) {
-          cleaned.ip = node.ip
-          cleaned.port = node.port
+          cleaned.ip = node.ip;
+          cleaned.port = node.port;
         }
-        
+
         // 递归处理子节点
         if (node.children && node.children.length > 0) {
-          cleaned.children = cleanData(node.children)
+          cleaned.children = cleanData(node.children);
         }
-        
-        return cleaned
-      })
-    }
-    
+
+        return cleaned;
+      });
+    };
+
     const exportData = {
-      version: '1.0',
+      version: "1.0",
       exportTime: new Date().toISOString(),
-      data: cleanData(stationTree.value)
-    }
-    
+      data: cleanData(stationTree.value),
+    };
+
     // 创建下载链接
-    const dataStr = JSON.stringify(exportData, null, 2)
-    const dataBlob = new Blob([dataStr], { type: 'application/json' })
-    const url = URL.createObjectURL(dataBlob)
-    
+    const dataStr = JSON.stringify(exportData, null, 2);
+    const dataBlob = new Blob([dataStr], { type: "application/json" });
+    const url = URL.createObjectURL(dataBlob);
+
     // 创建下载链接
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `station-tree-${new Date().toISOString().split('T')[0]}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    
-    ElMessage.success('数据导出成功')
-    emit('data-export', exportData)
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = `station-tree-${
+      new Date().toISOString().split("T")[0]
+    }.json`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+
+    ElMessage.success({
+      message: "数据导出成功！按 Ctrl+J 可打开下载管理",
+      duration: 15000,
+      showClose: true,
+    });
+
+    emit("data-export", exportData);
   } catch (error) {
-    console.error('导出数据失败:', error)
-    ElMessage.error('导出数据失败')
+    console.error("导出数据失败:", error);
+    ElMessage.error("导出数据失败");
   }
-}
+};
 
 // 导入数据
 const handleImportData = () => {
   // 创建文件输入元素
-  const input = document.createElement('input')
-  input.type = 'file'
-  input.accept = '.json'
-  input.style.display = 'none'
-  
+  const input = document.createElement("input");
+  input.type = "file";
+  input.accept = ".json";
+  input.style.display = "none";
+
   input.onchange = (event) => {
-    const file = event.target.files[0]
-    if (!file) return
-    
-    const reader = new FileReader()
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
     reader.onload = (e) => {
       try {
-        const jsonData = JSON.parse(e.target.result)
-        
+        const jsonData = JSON.parse(e.target.result);
+
         // 验证数据格式
         if (!validateImportData(jsonData)) {
-          ElMessage.error('数据格式不正确，请检查文件内容')
-          return
+          ElMessage.error("数据格式不正确，请检查文件内容");
+          return;
         }
-        
+
         // 确认导入
         ElMessageBox.confirm(
-          `确定要导入数据吗？这将替换当前的站点树数据。\n\n导入数据包含：\n- 线路：${countNodes(jsonData.data, 'line')} 个\n- 车间：${countNodes(jsonData.data, 'workshop')} 个\n- 站点：${countNodes(jsonData.data, 'station')} 个`,
-          '导入确认',
+          `确定要导入数据吗？这将替换当前的站点树数据。\n\n导入数据包含：\n- 线路：${countNodes(
+            jsonData.data,
+            "line"
+          )} 个\n- 车间：${countNodes(
+            jsonData.data,
+            "workshop"
+          )} 个\n- 站点：${countNodes(jsonData.data, "station")} 个`,
+          "导入确认",
           {
-            confirmButtonText: '确定导入',
-            cancelButtonText: '取消',
-            type: 'warning',
+            confirmButtonText: "确定导入",
+            cancelButtonText: "取消",
+            type: "warning",
           }
-        ).then(() => {
-          // 处理导入的数据
-          const processedData = processImportData(jsonData.data)
-          stationTree.value = processedData
-          
-          ElMessage.success('数据导入成功')
-          emit('data-import', processedData)
-          emit('tree-change', processedData)
-        }).catch(() => {
-          ElMessage.info('已取消导入')
-        })
-        
+        )
+          .then(() => {
+            // 处理导入的数据
+            const processedData = processImportData(jsonData.data);
+            stationTree.value = processedData;
+
+            ElMessage.success("数据导入成功");
+            emit("data-import", processedData);
+            emit("tree-change", processedData);
+          })
+          .catch(() => {
+            ElMessage.info("已取消导入");
+          });
       } catch (error) {
-        console.error('解析文件失败:', error)
-        ElMessage.error('文件格式错误，请选择正确的JSON文件')
+        console.error("解析文件失败:", error);
+        ElMessage.error("文件格式错误，请选择正确的JSON文件");
       }
-    }
-    
-    reader.readAsText(file)
-  }
-  
-  document.body.appendChild(input)
-  input.click()
-  document.body.removeChild(input)
-}
+    };
+
+    reader.readAsText(file);
+  };
+
+  document.body.appendChild(input);
+  input.click();
+  document.body.removeChild(input);
+};
 
 // 验证导入数据格式
 const validateImportData = (data) => {
-  if (!data || typeof data !== 'object') return false
-  if (!Array.isArray(data.data)) return false
-  
+  if (!data || typeof data !== "object") return false;
+  if (!Array.isArray(data.data)) return false;
+
   const validateNode = (node) => {
-    if (!node || typeof node !== 'object') return false
-    if (!node.id || !node.name) return false
-    
+    if (!node || typeof node !== "object") return false;
+    if (!node.id || !node.name) return false;
+
     // 如果是站点，检查必要属性
-    if (node.ip && (!node.port || typeof node.port !== 'number')) return false
-    
+    if (node.ip && (!node.port || typeof node.port !== "number")) return false;
+
     // 递归验证子节点
     if (node.children && Array.isArray(node.children)) {
-      return node.children.every(child => validateNode(child))
+      return node.children.every((child) => validateNode(child));
     }
-    
-    return true
-  }
-  
-  return data.data.every(node => validateNode(node))
-}
+
+    return true;
+  };
+
+  return data.data.every((node) => validateNode(node));
+};
 
 // 处理导入数据
 const processImportData = (data) => {
   const processNode = (node) => {
     const processed = {
       ...node,
-      expanded: false // 默认收起
-    }
-    
+      expanded: false, // 默认收起
+    };
+
     if (node.children && Array.isArray(node.children)) {
-      processed.children = node.children.map(child => processNode(child))
+      processed.children = node.children.map((child) => processNode(child));
     }
-    
-    return processed
-  }
-  
-  return data.map(node => processNode(node))
-}
+
+    return processed;
+  };
+
+  return data.map((node) => processNode(node));
+};
 
 // 统计节点数量
 const countNodes = (nodes, type) => {
-  let count = 0
-  
+  let count = 0;
+
   const countInNode = (node) => {
     if (getNodeType(node) === type) {
-      count++
+      count++;
     }
-    
+
     if (node.children && Array.isArray(node.children)) {
-      node.children.forEach(child => countInNode(child))
+      node.children.forEach((child) => countInNode(child));
     }
-  }
-  
-  nodes.forEach(node => countInNode(node))
-  return count
-}
+  };
+
+  nodes.forEach((node) => countInNode(node));
+  return count;
+};
 
 // 监听全部展开状态
 watch(allExpanded, (newVal) => {
   const setAllExpanded = (nodes, expanded) => {
-    nodes.forEach(node => {
-      node.expanded = expanded
+    nodes.forEach((node) => {
+      node.expanded = expanded;
       if (node.children) {
-        setAllExpanded(node.children, expanded)
+        setAllExpanded(node.children, expanded);
       }
-    })
-  }
-  
-  setAllExpanded(stationTree.value, newVal)
-})
+    });
+  };
+
+  setAllExpanded(stationTree.value, newVal);
+});
 
 // 暴露方法给父组件
 defineExpose({
   clearSelection,
   setSelectedStation,
   selectFirstStation,
-  selectedStation: readonly(selectedStation)
-})
+  selectedStation: readonly(selectedStation),
+});
 </script>
 
 <style scoped lang="scss">
-@import '@/styles/variables.scss';
+@import "@/styles/variables.scss";
 
 .station-tree {
   background: #fff;
@@ -829,26 +925,30 @@ defineExpose({
   justify-content: space-between;
   align-items: center;
   padding: 10px 16px;
-  background: linear-gradient(135deg, rgba(102, 126, 234, 0.8) 0%, rgba(118, 75, 162, 0.8) 100%);
+  background: linear-gradient(
+    135deg,
+    rgba(102, 126, 234, 0.8) 0%,
+    rgba(118, 75, 162, 0.8) 100%
+  );
   backdrop-filter: blur(10px);
   color: white;
-  
+
   .header-title {
     display: flex;
     align-items: center;
     gap: 6px;
     font-size: 14px;
     font-weight: 600;
-    
+
     .el-icon {
       font-size: 16px;
     }
   }
-  
+
   .header-actions {
     display: flex;
     gap: 8px;
-    
+
     .el-button {
       background: rgba(255, 255, 255, 0.2);
       border-color: rgba(255, 255, 255, 0.3);
@@ -856,7 +956,7 @@ defineExpose({
       padding: 4px 8px;
       font-size: 12px;
       height: auto;
-      
+
       &:hover {
         background: rgba(255, 255, 255, 0.3);
         border-color: rgba(255, 255, 255, 0.5);
@@ -869,20 +969,20 @@ defineExpose({
   padding: 8px 0;
   max-height: calc(100vh - 130px);
   overflow-y: auto;
-  
+
   &::-webkit-scrollbar {
     width: 6px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: #f1f1f1;
     border-radius: 3px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: #c1c1c1;
     border-radius: 3px;
-    
+
     &:hover {
       background: #a8a8a8;
     }
@@ -895,63 +995,63 @@ defineExpose({
     align-items: center;
     padding: 6px 10px;
     transition: all 0.3s ease;
-    
+
     &:hover {
       background: #f8f9ff;
     }
   }
-  
+
   &.line-node {
     .line-content {
       margin-left: 0;
-      
+
       &:hover {
         background: #f0f2ff;
       }
     }
   }
-  
+
   &.workshop-node {
     margin-left: 10px;
-    
+
     .workshop-content {
       margin-left: 4px;
-      
+
       &:hover {
         background: #f0f2ff;
       }
     }
   }
-  
+
   &.station-node {
     margin-left: 20px;
-    
+
     .station-content {
       border-left: 2px solid #e4e7ed;
       margin-left: 16px;
-      
+
       &:hover {
         background: #fafbff;
         border-left-color: #409eff;
       }
     }
-    
+
     // 选中状态样式
     &.selected {
       .station-content {
         background: #fafbff;
         border-left: 1px solid #409eff;
-        
+
         .node-name {
           color: #409eff;
           font-weight: 600;
         }
-        
+
         .station-icon {
           color: #409eff !important;
           transform: scale(1.1);
         }
-        
+
         .station-ip {
           background: rgba(64, 158, 255, 0.1);
           color: #409eff;
@@ -967,28 +1067,27 @@ defineExpose({
   align-items: center;
   gap: 6px;
   margin-right: 10px;
-  
+
   .expand-icon {
     font-size: 10px;
     color: #909399;
     transition: transform 0.3s ease;
-    
   }
-  
+
   .node-icon {
     font-size: 14px;
-    
+
     &.line-icon {
       color: #409eff;
     }
-    
+
     &.workshop-icon {
       color: #667eea;
     }
-    
+
     &.station-icon {
       color: #67c23a;
-      
+
       &.status-offline {
         color: #f56c6c;
       }
@@ -998,13 +1097,13 @@ defineExpose({
 
 .node-info {
   flex: 1;
-  
+
   &.station-info {
     flex: 1;
     min-width: 0; /* 允许内容收缩 */
     max-width: calc(100% - 80px); /* 为操作按钮预留空间 */
   }
-  
+
   .node-name {
     font-size: 13px;
     font-weight: 500;
@@ -1015,12 +1114,12 @@ defineExpose({
     overflow: hidden;
     text-overflow: ellipsis;
     cursor: pointer;
-    
+
     &.status-offline {
       color: #f56c6c;
     }
   }
-  
+
   .node-meta {
     display: flex;
     align-items: center;
@@ -1028,7 +1127,7 @@ defineExpose({
     font-size: 11px;
     color: #909399;
     flex-wrap: wrap;
-    
+
     .workshop-count {
       background: #e8f4fd;
       color: #409eff;
@@ -1036,7 +1135,7 @@ defineExpose({
       border-radius: 8px;
       font-weight: 500;
     }
-    
+
     .station-count {
       background: #f0f9ff;
       color: #667eea;
@@ -1044,29 +1143,29 @@ defineExpose({
       border-radius: 8px;
       font-weight: 500;
     }
-    
+
     .station-ip {
-      font-family: 'Courier New', monospace;
+      font-family: "Courier New", monospace;
       background: #f5f7fa;
       padding: 1px 4px;
       border-radius: 3px;
       color: #606266;
     }
-    
+
     .station-port {
       color: #c0c4cc;
     }
-    
+
     .station-status {
       padding: 1px 6px;
       border-radius: 8px;
       font-weight: 500;
-      
+
       &.status-online {
         background: #f0f9ff;
         color: #67c23a;
       }
-      
+
       &.status-offline {
         background: #fef0f0;
         color: #f56c6c;
@@ -1081,17 +1180,17 @@ defineExpose({
   gap: 4px;
   flex-shrink: 0; /* 防止按钮被压缩 */
   min-width: 40px; /* 确保按钮区域有最小宽度 */
-  
+
   .el-button {
     padding: 2px 6px;
     font-size: 11px;
     height: auto;
     min-height: 20px;
-    
+
     &.el-button--text {
       padding: 2px 4px;
       color: #909399;
-      
+
       &:hover {
         color: #409eff;
         background: rgba(64, 158, 255, 0.1);
@@ -1111,19 +1210,19 @@ defineExpose({
   justify-content: center;
   padding: 24px 16px;
   color: #909399;
-  
+
   .empty-icon {
     font-size: 32px;
     margin-bottom: 12px;
     color: #c0c4cc;
   }
-  
+
   .empty-text {
     font-size: 14px;
     margin-bottom: 6px;
     color: #606266;
   }
-  
+
   .empty-hint {
     font-size: 11px;
     color: #c0c4cc;
@@ -1153,64 +1252,64 @@ defineExpose({
 @media (max-width: 768px) {
   .tree-header {
     padding: 8px 12px;
-    
+
     .header-title {
       font-size: 12px;
     }
   }
-  
+
   .tree-content {
     padding: 6px 0;
-    
+
     .tree-node {
       .node-content {
         padding: 4px 12px;
       }
-      
+
       &.workshop-node {
         margin-left: 12px;
-        
+
         .workshop-content {
           margin-left: 12px;
         }
       }
-      
+
       &.station-node {
         margin-left: 24px;
-        
+
         .station-content {
           margin-left: 12px;
         }
       }
     }
   }
-  
+
   .node-indicator {
     gap: 4px;
     margin-right: 8px;
-    
+
     .expand-icon {
       font-size: 9px;
     }
-    
+
     .node-icon {
       font-size: 12px;
     }
   }
-  
+
   .node-info {
     .node-name {
       font-size: 12px;
       margin-bottom: 1px;
     }
-    
+
     .node-meta {
       font-size: 10px;
       flex-wrap: wrap;
       gap: 4px;
     }
   }
-  
+
   .node-actions {
     .el-button {
       padding: 1px 4px;
