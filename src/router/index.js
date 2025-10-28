@@ -71,7 +71,7 @@ export const constantRouterMap = [
         }
       },
     ]
-  }, 
+  },
   {
     path: '/electricParams',
     component: BackstageLayout,
@@ -94,7 +94,7 @@ export const constantRouterMap = [
       },
     ]
   },
-  
+
   {
     path: '/dragForce',
     component: BackstageLayout,
@@ -125,7 +125,7 @@ export const constantRouterMap = [
       },
     ]
   },
-  
+
   {
     path: '/pull',
     component: BackstageLayout,
@@ -142,6 +142,29 @@ export const constantRouterMap = [
         name: 'pullAudioDownload',
         meta: {
           title: '扳动历史音频下载',
+          icon: 'ant-design:table-outlined',
+          showStationSelector: true,
+        }
+      },
+    ]
+  },
+
+  {
+    path: '/action',
+    component: BackstageLayout,
+    name: 'action',
+    redirect: 'action/stat',
+    meta: {
+      title: '动作曲线',
+      icon: 'ant-design:table-outlined'
+    },
+    children: [
+      {
+        path: 'stat',
+        component: () => import('@/views/action/stat/index.vue'),
+        name: 'pullstat',
+        meta: {
+          title: '动作曲线-识别统计',
           icon: 'ant-design:table-outlined',
           showStationSelector: true,
         }

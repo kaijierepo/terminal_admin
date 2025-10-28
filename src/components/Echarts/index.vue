@@ -110,7 +110,7 @@ const resizeHandler = debounce(() => {
 const setOptions = () => {
   let sub = {};
   const series = props.options?.series;
-  switch (series.type || series[0]?.type) {
+  switch (series?.type || series?.[0]?.type) {
     case 'pie':
       sub = pieOpts;
       break;
@@ -130,10 +130,13 @@ onMounted(() => {
 
 watch(
   () => props.options,
-  (newVal, oldVal) => {
+  () => {
     // 当 options 发生变化时，更新图表
     const finalOptions = setOptions();
     console.log('finalOptions', finalOptions)
+    if (!echartInstance) {
+      return;
+    }
     echartInstance.setOption(finalOptions, true);
   }
 );
