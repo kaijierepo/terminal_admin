@@ -47,8 +47,6 @@
     <!-- 数据表格 -->
     <el-table
       :data="tableData"
-      border
-      stripe
       class="mt-2"
       v-loading="loading"
       height="80vh"
@@ -63,18 +61,36 @@
       <el-table-column prop="unknown" label="未识别">
         <template #default="scope">
           {{ scope.row.unknown }}
-          <el-icon @click="handleUnknownClick(scope.row)" v-if="scope.row.unknown != '-' && scope.row.unknownList && scope.row.unknownList.length > 0"><View /></el-icon>
+          <el-icon @click="handleViewUnknowChart(scope.row, 'unknownList')" v-if="scope.row.unknown != '-' && scope.row?.unknownList?.length > 0"><View /></el-icon>
         </template>
       </el-table-column>
-      <el-table-column prop="filterSkylight" label="过滤天窗未识别" />
-      <el-table-column prop="actual" label="实际未识别" />
-      <el-table-column prop="percent" label="百分比" />
+      <el-table-column prop="filterSkylight" label="过滤天窗未识别">
+        <template #default="scope">
+          {{ scope.row.filterSkylight }}
+          <el-icon @click="handleViewUnknowChart(scope.row, 'filteredSkylightUnknownList')" v-if="scope.row.filterSkylight != '-' && scope.row?.filteredSkylightUnknownList?.length > 0"><View /></el-icon>
+        </template>
+      </el-table-column>
+      <el-table-column prop="actual" label="实际未识别" min-width="120">
+          <template #default="scope">
+            <el-input-number 
+              v-model="scope.row.actual" 
+              type="number" 
+              size="mini" 
+              @change="updatePercentages"
+            />
+          </template>
+        </el-table-column>
+      <el-table-column prop="percent" label="百分比" min-width="120">
+        <template #default="scope">
+          {{ scope.row.percent }}
+        </template>
+      </el-table-column>
     </el-table>
 
     <!-- 未识别数据弹窗 -->
     <el-dialog
       v-model="unknownDialogVisible"
-      :title="`${currentUnknownRow?.stationName || ''} - ${currentUnknownRow?.switchName || ''} - 未识别数据详情`"
+      :title="unknownDialogTitle"
       width="80%"
       :before-close="handleDialogClose"
     >
@@ -88,6 +104,7 @@
             class="time-list-table"
             @row-click="handleTimeItemClick"
             height="100%"
+            highlight-current-row
           >
             <el-table-column prop="time" label="时间" />
           </el-table>
@@ -138,6 +155,18 @@ const currentUnknownRow = ref(null);
 const filteredUnknownList = ref([]);
 const selectedUnknownItem = ref(null);
 const chartOptions = ref({}); // 图表配置选项
+const unknownDialogTitle = ref('');
+
+// 添加计算百分比的方法
+const updatePercentages = () => {
+  tableData.value.forEach(row => {
+    if (row.total !== '-' && typeof row.actual === 'number' && typeof row.total === 'number' && row.total > 0) {
+      row.percent = ((row.actual / row.total) * 100).toFixed(2) + '%';
+    } else {
+      row.percent = '-';
+    }
+  });
+};
 
 // 获取所有站点
 const allStations = computed(() => stationStore.getAllStations);
@@ -150,18 +179,16 @@ const handleDateRangeChange = () => {
 };
 
 // 处理未识别点击事件
-const handleUnknownClick = (row) => {
+const handleViewUnknowChart = (row, type) => {
   if (row.unknownList && row.unknownList.length > 0) {
     currentUnknownRow.value = row;
     // 过滤未识别数据列表
-    filteredUnknownList.value = row.unknownList.map(item => ({
-      time: item.time,
-      move_direct: item.move_direct || '-',
-      p: item.p || '-' // 假设数据中有电流值p字段
-    }));
+    filteredUnknownList.value = row[type]
     selectedUnknownItem.value = null; // 重置选中项
     chartOptions.value = {}; // 重置图表选项
     unknownDialogVisible.value = true;
+    unknownDialogTitle.value = `${currentUnknownRow.value?.stationName || ''} - ${currentUnknownRow.value?.switchName || ''} - ${ (type === 'filteredSkylightUnknownList') && '过滤天窗' } 未识别数据详情`;
+    handleTimeItemClick(filteredUnknownList.value[0]);
   }
 };
 
@@ -199,7 +226,6 @@ const updateChartOptions = (curveDataList) => {
   const firstCurve = curveDataList[0].curve;
   const { interval, pt } = firstCurve;
   const xAxisData = pt.map((_, index) => (index * interval) / 1000); // 转换为秒
-  console.log(xAxisData)
   // 准备多条曲线的数据
   const series = curveDataList.map((item, index) => {
     // 从tag中提取曲线名称，例如从"W118#.W118#J2.电参数.Ia"中提取"Ia"
@@ -212,7 +238,7 @@ const updateChartOptions = (curveDataList) => {
     
     return {
       name: curveName,
-      data: item.curve.pt,
+      data: item.curve.pt.map(v => v * 1000),
       type: 'line',
       smooth: true,
       lineStyle: {
@@ -251,13 +277,13 @@ const updateChartOptions = (curveDataList) => {
       top: '20%',
       containLabel: true
     },
-    xAxis: {
+    xAxis: [{
       type: 'category',
       data: xAxisData,
       name: '时间 (s)',
       nameLocation: 'middle',
       nameGap: 30
-    },
+    }],
     yAxis: {
       type: 'value',
       name: '电流值 (A)',
@@ -375,6 +401,7 @@ const loadData = async () => {
             let unknownCount = 0;
             let skylightUnknownCount = 0;
             let unknownList = []
+            let filteredSkylightUnknownList = []
             
             allData.forEach(item => {
               if (item.move_direct === 0) {
@@ -385,8 +412,9 @@ const loadData = async () => {
                 unknownCount++;
                 unknownList.push(item)
                 if (isTimeInRange(item.time, startTime.value, endTime.value)) {
-                  console.log(item.time, startTime.value, endTime.value)
                   skylightUnknownCount++;
+                } else {
+                  filteredSkylightUnknownList.push(item)
                 }
               }
             });
@@ -395,7 +423,8 @@ const loadData = async () => {
             const filterSkylightCount = unknownCount - skylightUnknownCount;
             
             const actualUnknown = filterSkylightCount;
-            const percent = totalCount > 0 ? ((actualUnknown / totalCount) * 100).toFixed(2) : '0.00';
+            // 计算百分比并存储到percent字段
+            const percent = totalCount > 0 ? ((actualUnknown / totalCount) * 100).toFixed(2) + '%' : '-';
             
             results.push({
               stationName: station.stationName,
@@ -405,11 +434,12 @@ const loadData = async () => {
               total: totalCount || '-',
               reverse: reverseCount || '-',
               fixed: fixedCount || '-',
-              unknown: unknownCount || '-',
+              unknown: unknownCount,
               filterSkylight: filterSkylightCount,
               actual: actualUnknown || '-',
-              percent: percent + '%',
-              unknownList
+              percent: percent,
+              unknownList,
+              filteredSkylightUnknownList
             });
           } catch (error) {
             console.error(`获取 ${station.stationName} ${zzj.name} 电参数-电流数据失败:`, error);
@@ -429,6 +459,9 @@ const loadData = async () => {
     tableData.value = allResults
       .filter(result => result && result.length > 0)
       .flat();
+
+    // 计算百分比
+    updatePercentages();
 
     if (tableData.value.length === 0) {
       ElMessage.info('该日期范围暂无数据');
@@ -568,11 +601,26 @@ onMounted(() => {
   color: #303133;
 }
 
-.time-list-table .el-table__body tr.current-row {
-  background-color: #ecf5ff;
+/* 选中行样式 */
+.time-list-table .selected-row {
+  background-color: #ecf5ff !important;
+  color: #409eff;
+  font-weight: 500;
 }
 
-.time-list-table .el-table__body tr.hover-row.current-row {
-  background-color: #ecf5ff;
+/* 选中行的hover效果 */
+.time-list-table .selected-row:hover {
+  background-color: #e6f7ff !important;
+}
+
+/* 确保选中效果优先 */
+.time-list-table .el-table__body tr.selected-row.current-row {
+  background-color: #ecf5ff !important;
+}
+
+/* 调整表格单元格样式，增加内边距 */
+.time-list-table .el-table__body td {
+  padding: 12px 16px;
+  font-size: 14px;
 }
 </style>
